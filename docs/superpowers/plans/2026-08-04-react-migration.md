@@ -290,7 +290,13 @@ export type EventName = keyof typeof EVENT_CHANNELS;
 
 - [ ] **Step 4: Write `contract.ts`**
 
-Signatures are transcribed from `src/preload.ts:42-108`, with `any` replaced by real types.
+Argument lists are transcribed from `src/preload.ts:42-108`. **Return types must NOT be
+taken from `preload.ts`** — it is `Promise<any>` throughout and carries no ground truth.
+The authoritative source for what each command actually resolves is
+`src/main/ipc/handlers.ts`. The first draft of this plan guessed the return shapes from
+the command names and got several of them wrong, including three that already break
+existing callers in `src/renderer/hooks/useAccounts.ts`. Read the handler before typing
+a return value.
 
 ```ts
 import type {
@@ -335,11 +341,24 @@ export interface ProjectMember {
   avatar_url: string;
 }
 
+// handlers.ts:169-180 emits camelCase `createdAt` and an author WITHOUT an id.
+// The live legacy consumer at src/renderer/index.html:2723 reads note.createdAt.
 export interface MRNote {
   id: number;
   body: string;
-  created_at: string;
-  author: { id: number; username: string; name: string; avatar_url: string };
+  createdAt: string;
+  author: { username: string; name: string; avatar_url: string };
+}
+
+export interface AccountMutationResult {
+  success: boolean;
+  account?: GitLabAccount;
+  error?: string;
+}
+
+export interface AccountRemovalResult {
+  success: boolean;
+  error?: string;
 }
 
 export interface GitLabGroupSummary {
@@ -352,20 +371,28 @@ export interface GitLabGroupSummary {
   parent_id: number | null;
 }
 
+export type TrayStatus = 'green' | 'orange' | 'red' | 'gray';
+
+// Shape per src/main/services/polling.ts:8-16. `lastUpdated` really is a Date:
+// the payload crosses webContents.send by structured clone, not JSON, so it
+// arrives as a live Date object. Phase 2 must revisit this — the Tauri boundary
+// serialises differently and will deliver a string.
 export interface PolledData {
   mergeRequests: MergeRequest[];
   pipelines: Pipeline[];
   releases: Release[];
-  status: string;
-  lastUpdated: string;
+  status: TrayStatus;
+  lastUpdated: Date;
+  error?: string;
 }
 
 export interface GitLabBarApi {
+  // Return shapes below come from src/main/ipc/handlers.ts, not from preload.ts.
   accounts: {
     getAll(): Promise<GitLabAccount[]>;
-    add(input: GitLabAccountInput): Promise<GitLabAccount>;
-    remove(accountId: string): Promise<void>;
-    update(accountId: string, updates: Partial<GitLabAccount>): Promise<void>;
+    add(input: GitLabAccountInput): Promise<AccountMutationResult>;
+    remove(accountId: string): Promise<AccountRemovalResult>;
+    update(accountId: string, updates: Partial<GitLabAccount>): Promise<AccountMutationResult>;
     validateToken(instanceUrl: string, token: string): Promise<TokenValidation>;
   };
   gitlab: {
@@ -411,7 +438,14 @@ export interface GitLabBarApi {
 
 // Compile-time guarantee that the manifest and the interface cannot drift.
 // If a command is added to one and not the other, `npm run typecheck` fails.
-type Exact<A, B> = [A] extends [B] ? ([B] extends [A] ? true : never) : never;
+//
+// The mismatch branches MUST resolve to `false`, never to `never`. `never` is
+// TypeScript's bottom type and is assignable to every constraint, so
+// `AssertExact<never>` silently succeeds and the whole guarantee evaporates.
+// `false extends true` genuinely fails. This exact bug shipped in the first
+// draft of this plan and was caught only because the reviewer was asked to
+// prove the assertion bites, in both directions, rather than read it.
+type Exact<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
 type AssertExact<T extends true> = T;
 
 export type _AccountsMatch = AssertExact<
