@@ -12,7 +12,12 @@
 
 ## Global Constraints
 
-- **Strict parity.** No bug fixes, no behaviour changes, no visual redesign. The known bugs (self-hosted avatar 401, missing `onerror` fallback, truncated project tree) are explicitly **out of scope** and must be ported as-is.
+- **Strict parity.** No bug fixes, no behaviour changes, no visual redesign. Four known bugs are explicitly **out of scope** and must be ported as-is, then corrected together in a follow-up lot:
+  1. self-hosted avatar 401 — the renderer fetches the image with no `PRIVATE-TOKEN`
+  2. missing `onerror` fallback — a broken image stays broken instead of showing initials
+  3. truncated project tree in watched projects and search
+  4. `validateToken`'s gate is dead code (`preferences.html:1080-1084`): it tests the truthiness of an always-truthy object, so an invalid token adds the account anyway
+  Where a task's test would otherwise assert the *corrected* behaviour, the test is inverted to document the bug instead. Never "fix" one of those tests.
 - **UI copy is English and must be reproduced verbatim.** "Watched projects", "Search for a project...", "Add account", "No projects found", "Error during search", "Searching...". Never translate, never reword.
 - **No component may reference `window.gitlabbar`.** Access is via `useApi()`. A grep for `window.gitlabbar` outside `src/preload.ts` and `src/renderer/api/` must return nothing.
 - **No new runtime dependencies.** Only devDependencies may be added (test tooling, `@vitejs/plugin-react`).
@@ -1032,7 +1037,27 @@ git commit -m "feat: add preferences React shell and dual Vite entries"
 
 **Source to port:** markup `preferences.html:813-852`, script — the account list render and add/delete handlers around `preferences.html:1000-1100`. Behaviour to reproduce exactly: the account list with avatar (or initial fallback when `avatarUrl` is absent), the three inputs with their verbatim placeholders (`E.g.: Personal GitLab`, `https://gitlab.com` with that same default value, `glpat-xxxxxxxxxxxx`), the "Add account" button, the `#statusMessage` banner, and token validation before adding.
 
-**Parity trap:** the account avatar `<img>` has no `onerror` handler today (`preferences.html:1026` uses an initial-letter `<div>` only when `avatarUrl` is falsy). Reproduce that exactly. Adding a fallback is a bug fix and is out of scope.
+**Correction — an earlier draft of this plan was wrong here.** It claimed the account avatar
+is an `<img>` with no `onerror` handler. It is not. `preferences.html:1026` renders the
+initial-letter `<div>` **unconditionally**; there is no `<img>` on this page and `avatarUrl`
+is never read. That claim was written from the dead, never-executed scaffold
+`src/renderer/components/preferences/AccountsTab.tsx:89-95`, which does have the
+conditional. The avatar/`onerror` trap is real, but it belongs to the **menubar** window
+(Tasks 14-15), not here. Port what `preferences.html` actually does.
+
+**Parity trap that IS real here — `validateToken`'s gate is dead code.**
+`preferences.html:1080-1084` reads:
+
+```js
+const isValid = await window.gitlabbar.accounts.validateToken(url, token);
+if (!isValid) { showStatus('Invalid token or incorrect URL', 'error'); return; }
+```
+
+`validateToken` always resolves an **object** (`{valid: true, user}` or `{valid: false}`),
+never a boolean, so `isValid` is always truthy, the error branch is unreachable, and an
+invalid token adds the account anyway. Reproduce this control flow exactly, including the
+call to `validateToken` itself, which the vanilla code does make. Fixing it is a
+user-visible behaviour change and belongs to the post-migration fix lot.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1073,7 +1098,10 @@ describe('AccountsPage', () => {
     expect(add).toHaveBeenCalled();
   });
 
-  it('does not add the account when the token is rejected', async () => {
+  // Documents a known pre-existing bug, deliberately preserved. The vanilla gate is
+  // dead code (see the parity trap above), so an invalid token still adds the account.
+  // Scheduled for the post-migration fix lot. Do not "fix" this test.
+  it('adds the account even when the token is invalid (parity: the gate is dead code)', async () => {
     const add = vi.fn();
     renderWithApi(<AccountsPage />, {
       overrides: {
@@ -1088,13 +1116,14 @@ describe('AccountsPage', () => {
     await userEvent.type(screen.getByPlaceholderText('glpat-xxxxxxxxxxxx'), 'bad');
     await userEvent.click(screen.getByRole('button', { name: 'Add account' }));
 
-    await waitFor(() => expect(screen.getByText(/invalid/i)).toBeInTheDocument());
-    expect(add).not.toHaveBeenCalled();
+    await waitFor(() => expect(add).toHaveBeenCalled());
+    expect(screen.queryByText('Invalid token or incorrect URL')).not.toBeInTheDocument();
   });
 });
 ```
 
-The `/invalid/i` matcher must be replaced with the exact string used at `preferences.html` — read it and use it verbatim.
+`'Invalid token or incorrect URL'` is the real string at `preferences.html:1082`. It exists
+in the source but can never be displayed, which is precisely what this test pins down.
 
 - [ ] **Step 2: Run to confirm failure** — `npm run test:run -- AccountsPage`
 - [ ] **Step 3: Implement the component and its CSS Module**

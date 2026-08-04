@@ -16,7 +16,8 @@ interface Status {
 // Ported verbatim from src/renderer/preferences.html:813-852 (markup) and
 // the renderAccounts/addAccountBtn handler around :1018-1101 (script).
 //
-// Parity notes (see task-8-report.md for the full account):
+// Parity notes (see task-8-report.md for the full account, including
+// fix-round-1's ruling on item 2 below):
 // - preferences.html:1026 renders `(account.name || 'G')[0].toUpperCase()`
 //   in a plain <div> for every account, unconditionally -- there is no
 //   <img>, no avatarUrl check, and therefore no onerror handler anywhere in
@@ -28,6 +29,16 @@ interface Status {
 // - The "delete" flow (:1037-1047) does not check the resolved
 //   AccountRemovalResult's `success` field before showing "Account
 //   deleted" -- reproduced as-is.
+// - preferences.html:1080-1084 does `const isValid = await
+//   window.gitlabbar.accounts.validateToken(url, token); if (!isValid) {...}`.
+//   `validateToken` resolves an object (`{valid, user?}`), which is never
+//   falsy, so this branch is dead code in the shipped app: an invalid token
+//   never blocks adding the account. This is a known pre-existing bug,
+//   ruled by the human (fix-round-1) to be reproduced as-is and fixed in
+//   the post-migration bug-fix lot alongside the missing avatar onerror
+//   fallback and the self-hosted avatar 401. DO NOT "fix" this by gating on
+//   `validation.valid` -- gate on the truthiness of the resolved object
+//   itself, exactly like the source, so the branch stays unreachable.
 export function AccountsPage() {
   const api = useApi();
   const [accounts, setAccounts] = useState<GitLabAccount[]>([]);
@@ -78,8 +89,12 @@ export function AccountsPage() {
     setSubmitting(true);
 
     try {
-      const validation = await api.accounts.validateToken(url, token);
-      if (!validation.valid) {
+      // Gate on the truthiness of the *resolved object*, not `.valid` --
+      // see the parity note above. `validateToken` always resolves an
+      // object, so this is intentionally always false and the call below
+      // always runs, exactly like preferences.html:1080-1084.
+      const isValid = await api.accounts.validateToken(url, token);
+      if (!isValid) {
         showStatus('Invalid token or incorrect URL', 'error');
         return;
       }
