@@ -24,6 +24,19 @@ export interface TokenValidation {
   user?: ValidatedUser;
 }
 
+// Shapes below match what src/main/ipc/handlers.ts actually resolves for
+// each accounts:* command, not the promised value's naive guess.
+export interface AccountMutationResult {
+  success: boolean;
+  account?: GitLabAccount;
+  error?: string;
+}
+
+export interface AccountRemovalResult {
+  success: boolean;
+  error?: string;
+}
+
 export interface ProjectSearchResult {
   id: number;
   name: string;
@@ -43,8 +56,8 @@ export interface ProjectMember {
 export interface MRNote {
   id: number;
   body: string;
-  created_at: string;
-  author: { id: number; username: string; name: string; avatar_url: string };
+  createdAt: string;
+  author: { name: string; username: string; avatar_url: string };
 }
 
 export interface GitLabGroupSummary {
@@ -57,20 +70,33 @@ export interface GitLabGroupSummary {
   parent_id: number | null;
 }
 
+// Mirrors src/main/tray.ts's TrayStatus. Not imported: that file is
+// main-process code and must not be pulled into the shared/renderer graph.
+export type TrayStatus = 'green' | 'orange' | 'red' | 'gray';
+
 export interface PolledData {
   mergeRequests: MergeRequest[];
   pipelines: Pipeline[];
   releases: Release[];
-  status: string;
-  lastUpdated: string;
+  status: TrayStatus;
+  /**
+   * Electron delivers `webContents.send` payloads via the HTML structured-clone
+   * algorithm, not JSON, so `Date` objects survive the main -> renderer hop
+   * intact and arrive here as real `Date` instances (see
+   * src/main/services/polling.ts's `PollingData.lastUpdated`). Revisit this
+   * when the Tauri implementation lands: Tauri's IPC boundary serializes to
+   * JSON, so `Date` will arrive as a string there instead.
+   */
+  lastUpdated: Date;
+  error?: string;
 }
 
 export interface GitLabBarApi {
   accounts: {
     getAll(): Promise<GitLabAccount[]>;
-    add(input: GitLabAccountInput): Promise<GitLabAccount>;
-    remove(accountId: string): Promise<void>;
-    update(accountId: string, updates: Partial<GitLabAccount>): Promise<void>;
+    add(input: GitLabAccountInput): Promise<AccountMutationResult>;
+    remove(accountId: string): Promise<AccountRemovalResult>;
+    update(accountId: string, updates: Partial<GitLabAccount>): Promise<AccountMutationResult>;
     validateToken(instanceUrl: string, token: string): Promise<TokenValidation>;
   };
   gitlab: {
@@ -116,7 +142,7 @@ export interface GitLabBarApi {
 
 // Compile-time guarantee that the manifest and the interface cannot drift.
 // If a command is added to one and not the other, `npm run typecheck` fails.
-type Exact<A, B> = [A] extends [B] ? ([B] extends [A] ? true : never) : never;
+type Exact<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
 type AssertExact<T extends true> = T;
 
 export type _AccountsMatch = AssertExact<
