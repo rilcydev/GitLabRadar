@@ -1,0 +1,12 @@
+/*
+ * Fixture for src/test/cssTokenUsage.test.ts.
+ *
+ * Every var() reference here resolves to a token actually declared in
+ * src/renderer/styles/tokens.css. Proves the guard doesn't false-positive
+ * on legitimate usage, including a window-specific split token.
+ */
+.example {
+  background: var(--bg-card-menubar);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-md-preferences);
+}

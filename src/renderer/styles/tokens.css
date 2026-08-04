@@ -6,13 +6,14 @@
  * own :root / light-theme custom properties, and the two disagreed on a
  * number of values. This file merges them into one set of tokens.
  *
- * Every token whose value differs between the two windows is either:
- *   - unified to a single value (only where docs/superpowers/plans/
- *     token-reconciliation.md explicitly says so), or
- *   - kept as two separate tokens, one per window, so neither window's
- *     appearance changes. The "-preferences" (or, for --bg-elevated,
- *     "-opaque") suffixed token holds the preferences window's value;
- *     the unsuffixed token holds the menubar window's value.
+ * Naming convention:
+ *   - A bare token name means the value is identical for both windows (or
+ *     was unified — see docs/superpowers/plans/token-reconciliation.md for
+ *     the two glow tokens that were deliberately unified).
+ *   - A token that genuinely differs between the two windows has NO bare
+ *     name. Both sides are explicit: `-menubar` and `-preferences` suffixes.
+ *     There is no naive/default choice to reach for by accident — you must
+ *     pick the window you're styling.
  *
  * See docs/superpowers/plans/token-reconciliation.md for the full list of
  * divergences and their resolutions.
@@ -20,12 +21,13 @@
 
 :root {
   /* Dark theme - Premium palette */
-  --bg-base: #0a0a0b;
-  --bg-elevated: rgba(18, 18, 20, 0.85);
-  --bg-elevated-opaque: rgba(18, 18, 20, 0.95);
-  --bg-card: rgba(28, 28, 32, 0.6);
+  --bg-base-menubar: #0a0a0b;
+  --bg-base-preferences: #0a0a0b;
+  --bg-elevated-menubar: rgba(18, 18, 20, 0.85);
+  --bg-elevated-preferences: rgba(18, 18, 20, 0.95);
+  --bg-card-menubar: rgba(28, 28, 32, 0.6);
   --bg-card-preferences: rgba(28, 28, 32, 0.6);
-  --bg-card-hover: rgba(38, 38, 45, 0.7);
+  --bg-card-hover-menubar: rgba(38, 38, 45, 0.7);
   --bg-card-hover-preferences: rgba(38, 38, 45, 0.7);
   --bg-card-active: rgba(48, 48, 58, 0.8);
   --bg-input: rgba(20, 20, 24, 0.8);
@@ -64,7 +66,7 @@
                    radial-gradient(at 100% 100%, rgba(59, 130, 246, 0.1) 0px, transparent 50%);
 
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-md-menubar: 0 4px 16px rgba(0, 0, 0, 0.4);
   --shadow-md-preferences: 0 4px 16px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
   --shadow-glow: 0 0 40px rgba(139, 92, 246, 0.15);
@@ -77,13 +79,13 @@
 
 @media (prefers-color-scheme: light) {
   :root {
-    --bg-base: #f8f9fa;
+    --bg-base-menubar: #f8f9fa;
     --bg-base-preferences: #f5f5f7;
-    --bg-elevated: rgba(255, 255, 255, 0.9);
-    --bg-elevated-opaque: rgba(255, 255, 255, 0.95);
-    --bg-card: rgba(255, 255, 255, 0.7);
+    --bg-elevated-menubar: rgba(255, 255, 255, 0.9);
+    --bg-elevated-preferences: rgba(255, 255, 255, 0.95);
+    --bg-card-menubar: rgba(255, 255, 255, 0.7);
     --bg-card-preferences: rgba(255, 255, 255, 0.8);
-    --bg-card-hover: rgba(245, 245, 250, 0.9);
+    --bg-card-hover-menubar: rgba(245, 245, 250, 0.9);
     --bg-card-hover-preferences: rgba(250, 250, 255, 0.9);
     --bg-card-active: rgba(235, 235, 245, 1);
     --bg-input: rgba(245, 245, 250, 0.9);
@@ -103,7 +105,7 @@
                      radial-gradient(at 100% 100%, rgba(59, 130, 246, 0.05) 0px, transparent 50%);
 
     --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
-    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12);
+    --shadow-md-menubar: 0 4px 16px rgba(0, 0, 0, 0.12);
     --shadow-md-preferences: 0 4px 16px rgba(0, 0, 0, 0.1);
     --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.16);
   }

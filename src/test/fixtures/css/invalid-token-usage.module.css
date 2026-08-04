@@ -1,0 +1,14 @@
+/*
+ * Fixture for src/test/cssTokenUsage.test.ts.
+ *
+ * Deliberately references a token that is not defined anywhere in
+ * src/renderer/styles/tokens.css. Proves the guard's extractor actually
+ * detects an undefined var() reference, rather than passing vacuously.
+ * This file is intentionally NOT under src/renderer/, so it is never
+ * picked up by the guard's real project scan — only referenced directly
+ * by the test.
+ */
+.example {
+  background: var(--bg-card-menubar);
+  color: var(--does-not-exist);
+}
