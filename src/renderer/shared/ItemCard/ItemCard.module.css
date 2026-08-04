@@ -1,0 +1,60 @@
+/*
+ * Ported from src/renderer/index.html:442-476 (.item, .item::before,
+ * .item:hover, .item:hover::before). This is the generic `.item` shell
+ * only -- `.item-icon`, `.item-content`, `.item-tag`, `.item-time`,
+ * `.item-dismiss`, etc. are per-row content that MR/pipeline/release rows
+ * (Tasks 15-17) compose as children, since their exact placement differs
+ * per row type (see task-14-report.md for the layout differences already
+ * found in index.html between MR, pipeline and release rows).
+ *
+ * --bg-card and --shadow-md have no bare form (Task 6 token rule) -- this
+ * is the menubar window, so the -menubar variants are used throughout.
+ */
+
+.item {
+  display: flex;
+  align-items: flex-start;
+  padding: 14px 16px;
+  background: var(--bg-card-menubar);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  gap: 14px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* index.html:457-467. Literal port: opacity 0 by default, fading to 1 on
+   hover, gradient-purple always. An earlier draft of this file tried
+   exposing this bar's color and opacity as custom properties consumers
+   could set inline, so Task 15's MR age indicators (index.html:1326-1351,
+   which recolor this same bar and force it permanently visible per age
+   tier) could override it without cross-module CSS selector tricks -- but
+   src/test/cssTokenUsage.test.ts flags any referenced custom property
+   whose name isn't declared in tokens.css, including one used purely as a
+   locally-set parameter with a fallback, so that pattern is not available
+   here. Task 15 will need its own mechanism (e.g. its own wrapping
+   selector via `className`, or composing a second ::before on a wrapper
+   it controls). */
+.item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  background: var(--gradient-purple);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.item:hover {
+  background: var(--bg-card-hover-menubar);
+  border-color: rgba(139, 92, 246, 0.2);
+}
+
+.item:hover::before {
+  opacity: 1;
+}

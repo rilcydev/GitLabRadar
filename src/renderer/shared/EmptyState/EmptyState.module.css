@@ -1,0 +1,66 @@
+/* Ported from src/renderer/index.html:690-747 (.empty-state, .empty-icon,
+   .empty-icon::before, .empty-icon svg, .empty-title, .empty-desc).
+   --bg-card has no bare form (Task 6 token rule); this is the menubar
+   window, so --bg-card-menubar. */
+
+/* index.html:693-700 */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+/* index.html:702-713 */
+.emptyIcon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--bg-card-menubar);
+  border: 1px solid var(--glass-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+  position: relative;
+}
+
+/* index.html:715-723 */
+.emptyIcon::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  background: var(--gradient-purple);
+  opacity: 0.2;
+  filter: blur(10px);
+}
+
+/* index.html:725-731 */
+.emptyIcon svg {
+  width: 32px;
+  height: 32px;
+  fill: var(--text-tertiary);
+  position: relative;
+  z-index: 1;
+}
+
+/* index.html:733-739 */
+.emptyTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  letter-spacing: -0.3px;
+}
+
+/* index.html:741-747 */
+.emptyDesc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+  max-width: 260px;
+  line-height: 1.5;
+}

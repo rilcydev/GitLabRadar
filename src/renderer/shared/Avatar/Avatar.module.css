@@ -1,0 +1,72 @@
+/*
+ * Ported from src/renderer/index.html:1158-1180 (.item-avatar,
+ * .item-avatar-placeholder) and :1262-1300 (.people-avatars .mini-avatar,
+ * .mini-avatar-placeholder). The source scopes the mini rules under a
+ * `.people-avatars` ancestor selector purely for the descendant-selector
+ * specificity vanilla CSS needs when everything shares one global
+ * stylesheet; a CSS Module already scopes .miniAvatar/.miniAvatarPlaceholder
+ * to this file alone, so that ancestor qualifier is redundant here and was
+ * dropped -- the declarations themselves are unchanged.
+ */
+
+/* index.html:1158-1166 */
+.itemAvatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--glass-border);
+  flex-shrink: 0;
+}
+
+/* index.html:1167-1180 */
+.itemAvatarPlaceholder {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--gradient-purple);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: white;
+  flex-shrink: 0;
+}
+
+/* index.html:1262-1273 (border color: --bg-card has no bare form -- this
+   is the menubar window, so --bg-card-menubar per the Task 6 token rule) */
+.miniAvatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--bg-card-menubar);
+  margin-left: -6px;
+  object-fit: cover;
+}
+
+/* index.html:1275-1277 */
+.miniAvatar:first-child {
+  margin-left: 0;
+}
+
+/* index.html:1279-1292 */
+.miniAvatarPlaceholder {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--bg-card-menubar);
+  margin-left: -6px;
+  background: var(--gradient-blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  font-weight: 600;
+  color: white;
+}
+
+/* index.html:1294-1296 */
+.miniAvatarPlaceholder:first-child {
+  margin-left: 0;
+}

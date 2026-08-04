@@ -1,0 +1,48 @@
+/* Ported from src/renderer/index.html:397-437 (.section-header, .section-icon,
+   .section-icon svg, .section-title, .section-count). The outer `.section`
+   wrapper (index.html:393-395, margin-bottom: 20px) is NOT part of this
+   component -- see SectionHeader.tsx's doc comment for why. */
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-left: 4px;
+}
+
+/* index.html:405-412. Background color/gradient is per-consumer (MR
+   role sections use one of four gradients, index.html:414-417; release/PO
+   sections use --gradient-green, index.html:3180) so it is supplied via
+   the `iconBackground` prop rather than a fixed set of type classes. */
+.sectionIcon {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* index.html:419-423 */
+.sectionIcon svg {
+  width: 10px;
+  height: 10px;
+  fill: white;
+}
+
+/* index.html:425-431 */
+.sectionTitle {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+/* index.html:433-437 */
+.sectionCount {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-left: auto;
+}
