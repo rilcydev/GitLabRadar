@@ -789,21 +789,35 @@ export function useApi(): GitLabBarApi {
 
 `src/test/renderWithApi.tsx`:
 
+Both `api` and `emit` in the return type are **non-optional**. An earlier draft returned
+`emit` only when the helper built the fake itself, which forced every call site onto
+`emit?.` and made a test that needed both an override and an event bypass the helper
+entirely. With ~13 event-driven component tasks downstream, that friction compounds.
+
 ```tsx
 import { render, type RenderOptions } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { ApiProvider } from '../renderer/api/ApiContext';
-import { createFakeApi } from '../renderer/api/FakeApi';
+import { createFakeApi, type FakeApiOverrides, type FakeEmitter } from '../renderer/api/FakeApi';
+import type { GitLabBarApi } from '../shared/api/contract';
 
-export function renderWithApi(
-  ui: ReactElement,
-  { api = createFakeApi().api, ...options }: { api?: ReturnType<typeof createFakeApi>['api'] } & RenderOptions = {}
-) {
-  return {
-    api,
-    ...render(<ApiProvider api={api}>{ui}</ApiProvider>, options),
-  };
-}
+type RenderWithApiOptions = RenderOptions & {
+  overrides?: FakeApiOverrides;                    // helper builds the fake — the common path
+  fake?: { api: GitLabBarApi; emit: FakeEmitter }; // caller supplies both halves together
+};
+
+// Passing both `overrides` and `fake` throws: it is a programming error in the test,
+// and failing loudly beats silently preferring one.
+export function renderWithApi(ui: ReactElement, options: RenderWithApiOptions = {}) { … }
+```
+
+Usage in later tasks — a test that stubs a method never touches `createFakeApi` itself:
+
+```tsx
+const { emit } = renderWithApi(<MergeRequestsTab />, {
+  overrides: { gitlab: { getMRs: async () => [] } },
+});
+emit.dataUpdated({ … });
 ```
 
 - [ ] **Step 5: Run the tests**
@@ -1037,8 +1051,9 @@ const account = {
 
 describe('AccountsPage', () => {
   it('lists existing accounts', async () => {
-    const { api } = createFakeApi({ accounts: { getAll: async () => [account] } });
-    renderWithApi(<AccountsPage />, { api });
+    renderWithApi(<AccountsPage />, {
+      overrides: { accounts: { getAll: async () => [account] } },
+    });
     expect(await screen.findByText('Work')).toBeInTheDocument();
   });
 
@@ -1047,9 +1062,9 @@ describe('AccountsPage', () => {
       username: 'cyril', name: 'Cyril', avatarUrl: '',
     } });
     const add = vi.fn().mockResolvedValue(account);
-    const { api } = createFakeApi({ accounts: { getAll: async () => [], validateToken, add } });
-
-    renderWithApi(<AccountsPage />, { api });
+    renderWithApi(<AccountsPage />, {
+      overrides: { accounts: { getAll: async () => [], validateToken, add } },
+    });
     await userEvent.type(screen.getByPlaceholderText('E.g.: Personal GitLab'), 'Work');
     await userEvent.type(screen.getByPlaceholderText('glpat-xxxxxxxxxxxx'), 'glpat-secret');
     await userEvent.click(screen.getByRole('button', { name: 'Add account' }));
@@ -1060,13 +1075,15 @@ describe('AccountsPage', () => {
 
   it('does not add the account when the token is rejected', async () => {
     const add = vi.fn();
-    const { api } = createFakeApi({ accounts: {
-      getAll: async () => [],
-      validateToken: async () => ({ valid: false }),
-      add,
-    } });
-
-    renderWithApi(<AccountsPage />, { api });
+    renderWithApi(<AccountsPage />, {
+      overrides: {
+        accounts: {
+          getAll: async () => [],
+          validateToken: async () => ({ valid: false }),
+          add,
+        },
+      },
+    });
     await userEvent.type(screen.getByPlaceholderText('E.g.: Personal GitLab'), 'Work');
     await userEvent.type(screen.getByPlaceholderText('glpat-xxxxxxxxxxxx'), 'bad');
     await userEvent.click(screen.getByRole('button', { name: 'Add account' }));
@@ -1111,8 +1128,7 @@ Cover: debounce (advance fake timers by 299 ms → no call, 300 ms → one call)
 it('debounces the search by 300ms', async () => {
   vi.useFakeTimers();
   const searchProjects = vi.fn().mockResolvedValue([]);
-  const { api } = createFakeApi({ gitlab: { searchProjects } });
-  renderWithApi(<ProjectsPage />, { api });
+  renderWithApi(<ProjectsPage />, { overrides: { gitlab: { searchProjects } } });
 
   await userEvent.type(screen.getByPlaceholderText('Search for a project...'), 'api', {
     advanceTimers: vi.advanceTimersByTime,
@@ -1285,20 +1301,21 @@ Tabs, with verbatim labels and badge element ids from the source: `mrs` (`#mrCou
 
 ```tsx
 it('replaces its data when data:updated arrives', async () => {
-  const { api, emit } = createFakeApi();
-  renderWithApi(<DataProvider><Probe /></DataProvider>, { api });
+  const { emit } = renderWithApi(<DataProvider><Probe /></DataProvider>);
 
+  // lastUpdated is a Date, NOT a string. Electron delivers PolledData by structured
+  // clone, so the renderer receives a live Date object. Typing or faking it as a
+  // string makes the test pass against a shape the app never actually sees.
   act(() => emit.dataUpdated({
     mergeRequests: [{ id: 1 } as never], pipelines: [], releases: [],
-    status: 'green', lastUpdated: '2026-08-04T12:00:00Z',
+    status: 'green', lastUpdated: new Date('2026-08-04T12:00:00Z'),
   }));
 
   expect(await screen.findByTestId('mr-count')).toHaveTextContent('1');
 });
 
 it('unsubscribes on unmount', () => {
-  const { api } = createFakeApi();
-  const { unmount } = renderWithApi(<DataProvider><Probe /></DataProvider>, { api });
+  const { unmount } = renderWithApi(<DataProvider><Probe /></DataProvider>);
   unmount();
   // emitting after unmount must not throw
 });
