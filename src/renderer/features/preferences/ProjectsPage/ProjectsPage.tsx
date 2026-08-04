@@ -100,6 +100,16 @@ export function ProjectsPage() {
         return;
       }
 
+      // preferences.html:1162: this runs synchronously on every keystroke,
+      // *before* `setTimeout` below is even called -- deliberate and
+      // source-faithful, not a bug to "optimize" by moving it into the
+      // debounced callback. Despite the name, "Searching..." is a typing
+      // indicator (shown the instant 2+ characters are present), not an
+      // in-flight indicator (there is no separate state for "debounce timer
+      // pending" vs. "request actually in flight"); it happens to also
+      // cover the in-flight period because nothing changes listState again
+      // until the request settles. The task-9 brief described it as
+      // in-flight-only and was wrong -- see task-9-report.md fix round 1.
       setListState({ kind: 'searching' });
 
       searchTimeoutRef.current = setTimeout(() => {

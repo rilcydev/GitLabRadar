@@ -2,6 +2,7 @@ import userEvent from '@testing-library/user-event';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { renderWithApi } from '../../../../test/renderWithApi';
+import { typeWithFakeTimers } from '../../../../test/typeWithFakeTimers';
 import { ProjectsPage } from './ProjectsPage';
 
 const apiProject = {
@@ -12,29 +13,6 @@ const apiProject = {
   web_url: 'https://gitlab.com/cyril/gitlab-bar',
   default_branch: 'main',
 };
-
-// userEvent.type() under fake timers awaits its own internal per-keystroke
-// delays via `wait()`, which resolves fine using the `advanceTimers` option
-// -- but the underlying `act()`/React-scheduler flush after the last
-// dispatched event needs at least one more event-loop turn than
-// userEvent's own internal advances provide, and hangs indefinitely without
-// it (reproduced independently of this component with a bare <input>).
-// Racing the typed promise against zero-duration fake-timer pumps
-// (`vi.advanceTimersByTimeAsync(0)`) flushes that pending turn without
-// moving the virtual clock, so debounce-timing assertions right after stay
-// exact (unlike `vi.useFakeTimers({ shouldAdvanceTime: true })`, which
-// fixes the hang but also lets real wall-clock time leak into the virtual
-// clock and made the 299ms/300ms boundary assertion below flaky).
-async function typeWithFakeTimers(element: HTMLElement, text: string) {
-  let done = false;
-  const pending = userEvent.type(element, text, { advanceTimers: vi.advanceTimersByTime }).then(() => {
-    done = true;
-  });
-  for (let i = 0; i < 50 && !done; i++) {
-    await vi.advanceTimersByTimeAsync(0);
-  }
-  await pending;
-}
 
 describe('ProjectsPage', () => {
   it('shows the initial hint before any search', async () => {
@@ -90,6 +68,16 @@ describe('ProjectsPage', () => {
     renderWithApi(<ProjectsPage />, { overrides: { gitlab: { searchProjects } } });
 
     await typeWithFakeTimers(screen.getByPlaceholderText('Search for a project...'), 'api');
+    // preferences.html:1162 sets this synchronously on every keystroke,
+    // before `setTimeout` is even called -- it is a typing indicator, not
+    // an in-flight indicator. Asserting it here, before any timer advance
+    // and therefore before `searchProjects` has been called at all, pins
+    // that ordering: a regression that moved `setListState({ kind:
+    // 'searching' })` inside the debounced callback would still pass the
+    // post-300ms assertion below but fail this one.
+    expect(screen.getByText('Searching...')).toBeInTheDocument();
+    expect(searchProjects).not.toHaveBeenCalled();
+
     vi.advanceTimersByTime(300);
     expect(screen.getByText('Searching...')).toBeInTheDocument();
 
