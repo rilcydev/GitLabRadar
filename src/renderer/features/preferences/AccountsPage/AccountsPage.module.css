@@ -1,0 +1,308 @@
+/*
+ * Ported from src/renderer/preferences.html (the vanilla window this page
+ * replaces -- see Task 11). Literal values there are replaced with
+ * var(--…) references into src/renderer/styles/tokens.css. Per the token
+ * binding rule established in Task 6: a bare token name is identical in
+ * both windows; the six split tokens (--bg-base, --bg-elevated, --bg-card,
+ * --bg-card-hover, --shadow-md, --gradient-mesh) have no bare form and this
+ * window always takes the `-preferences` variant.
+ *
+ * `.page`/`.pageTitle`/`.pageDesc` intentionally duplicate the rules already
+ * declared in ../../../windows/preferences/PreferencesApp.module.css --
+ * this component owns its full page body (Task 7's inline stub is removed
+ * in PreferencesApp.tsx) and must not depend on a wrapper class from the
+ * shell module.
+ */
+
+/* preferences.html:212-243 */
+.page {
+  max-width: 480px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* preferences.html:227-236 */
+.pageTitle {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin-bottom: 8px;
+  background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* preferences.html:238-243 */
+.pageDesc {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 32px;
+  line-height: 1.5;
+}
+
+/* preferences.html:461-484 */
+.statusMessage {
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
+  margin-bottom: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  display: none;
+  align-items: center;
+  gap: 10px;
+}
+
+.statusMessageSuccess {
+  display: flex;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: var(--accent-green);
+}
+
+.statusMessageError {
+  display: flex;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: var(--accent-red);
+}
+
+/* preferences.html:355-357 */
+.accountList {
+  margin-bottom: 32px;
+}
+
+/* preferences.html:359-375 */
+.accountItem {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  background: var(--bg-card-preferences);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  margin-bottom: 12px;
+  gap: 16px;
+  transition: all 0.2s ease;
+}
+
+.accountItem:hover {
+  background: var(--bg-card-hover-preferences);
+  border-color: rgba(139, 92, 246, 0.2);
+  transform: translateX(4px);
+}
+
+/* preferences.html:377-389 */
+.accountAvatar {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  background: var(--gradient-purple);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 18px;
+  box-shadow: 0 4px 12px var(--accent-purple-glow);
+}
+
+/* preferences.html:391-393 */
+.accountInfo {
+  flex: 1;
+}
+
+/* preferences.html:395-399 */
+.accountName {
+  font-weight: 600;
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+
+/* preferences.html:401-405 */
+.accountUrl {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-family: 'SF Mono', Monaco, monospace;
+}
+
+/* preferences.html:407-418 */
+.accountDelete {
+  padding: 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--glass-border);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.accountDelete:hover {
+  background: var(--accent-red);
+  border-color: var(--accent-red);
+  color: white;
+  box-shadow: 0 4px 12px var(--accent-red-glow);
+}
+
+/* preferences.html:427-431 */
+.accountDelete svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+/* preferences.html:436-450 */
+.emptyAccounts {
+  text-align: center;
+  padding: 40px 24px;
+  background: var(--bg-card-preferences);
+  border: 1px dashed var(--glass-border);
+  border-radius: var(--radius-lg);
+  color: var(--text-secondary);
+}
+
+.emptyAccountsIcon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 16px;
+  opacity: 0.5;
+}
+
+.emptyAccountsIcon svg {
+  width: 100%;
+  height: 100%;
+  fill: var(--text-tertiary);
+}
+
+/* preferences.html:581-598 */
+.sectionTitle {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 32px 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sectionTitle::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--glass-border);
+}
+
+/* preferences.html:248-260 */
+.formGroup {
+  margin-bottom: 20px;
+}
+
+.formLabel {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* preferences.html:262-281 */
+.formInput {
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--bg-input);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.formInput:focus {
+  border-color: var(--accent-purple);
+  box-shadow: 0 0 0 3px var(--accent-purple-glow);
+}
+
+.formInput::placeholder {
+  color: var(--text-tertiary);
+}
+
+/* preferences.html:283-288 */
+.formHint {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 6px;
+  line-height: 1.4;
+}
+
+/* preferences.html:346-350 */
+.btnGroup {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+/* preferences.html:302-312 */
+.btn {
+  padding: 12px 24px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border: none;
+  position: relative;
+  overflow: hidden;
+}
+
+/* preferences.html:314-318 */
+.btnPrimary {
+  background: var(--gradient-purple);
+  color: white;
+  box-shadow: var(--shadow-md-preferences), 0 0 20px var(--accent-purple-glow);
+}
+
+/* preferences.html:320-329 */
+.btnPrimary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+/* preferences.html:331-338 */
+.btnPrimary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px var(--accent-purple-glow);
+}
+
+.btnPrimary:hover::before {
+  left: 100%;
+}
+
+/* preferences.html:340-344 */
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}

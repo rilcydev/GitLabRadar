@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { AccountsPage } from '../../features/preferences/AccountsPage/AccountsPage';
 import styles from './PreferencesApp.module.css';
 
 type Page = 'accounts' | 'projects' | 'general';
@@ -40,20 +41,10 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
-// Page titles/descriptions copied verbatim from preferences.html:814-815 (Accounts),
-// :854-855 (Projects), :873-874 (General). Real content arrives in Tasks 8-10 --
-// this task ships only the heading and description for each page.
-function AccountsPage() {
-  return (
-    <div className={styles.page}>
-      <h1 className={styles.pageTitle}>GitLab Accounts</h1>
-      <p className={styles.pageDesc}>
-        Manage your GitLab connections to track your merge requests and pipelines.
-      </p>
-    </div>
-  );
-}
-
+// Page titles/descriptions copied verbatim from preferences.html:854-855
+// (Projects), :873-874 (General). Accounts got its real content in Task 8
+// (src/renderer/features/preferences/AccountsPage/AccountsPage.tsx); Projects
+// and General remain stubs until Tasks 9-10.
 function ProjectsPage() {
   return (
     <div className={styles.page}>
