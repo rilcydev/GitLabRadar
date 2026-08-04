@@ -1,0 +1,276 @@
+/*
+ * Ported from src/renderer/preferences.html (the vanilla window this page
+ * replaces -- see Task 11). Literal values there are replaced with
+ * var(--…) references into src/renderer/styles/tokens.css. Per the token
+ * binding rule established in Task 6: a bare token name is identical in
+ * both windows; the six split tokens (--bg-base, --bg-elevated, --bg-card,
+ * --bg-card-hover, --shadow-md, --gradient-mesh) have no bare form and this
+ * window always takes the `-preferences` variant.
+ *
+ * `.page`/`.pageTitle`/`.pageDesc`/`.sectionTitle` intentionally duplicate
+ * the rules already declared in ../../../windows/preferences/PreferencesApp.module.css
+ * (and in ../AccountsPage/AccountsPage.module.css) -- this component owns
+ * its full page body (Task 7's inline stub is removed in
+ * PreferencesApp.tsx) and must not depend on a wrapper class from the
+ * shell module.
+ */
+
+/* preferences.html:212-243 */
+.page {
+  max-width: 480px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* preferences.html:227-236 */
+.pageTitle {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin-bottom: 8px;
+  background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* preferences.html:238-243 */
+.pageDesc {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 32px;
+  line-height: 1.5;
+}
+
+/* preferences.html:581-598 */
+.sectionTitle {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 32px 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sectionTitle::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--glass-border);
+}
+
+/* preferences.html:603-606 */
+.projectSearch {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+/* preferences.html:608-616 */
+.projectSearchIcon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  fill: var(--text-tertiary);
+}
+
+/* preferences.html:618-628 */
+.projectSearch input {
+  width: 100%;
+  padding: 12px 16px 12px 42px;
+  background: var(--bg-input);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+/* preferences.html:630-633 */
+.projectSearch input:focus {
+  border-color: var(--accent-purple);
+  box-shadow: 0 0 0 3px var(--accent-purple-glow);
+}
+
+/* preferences.html:635-641 */
+.projectListContainer {
+  background: var(--bg-card-preferences);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+/* preferences.html:643-650 */
+.projectListContainer::-webkit-scrollbar {
+  width: 6px;
+}
+
+.projectListContainer::-webkit-scrollbar-thumb {
+  background: var(--glass-border);
+  border-radius: 3px;
+}
+
+/* preferences.html:652-660 */
+.projectItem {
+  display: flex;
+  align-items: center;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  gap: 14px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+/* preferences.html:662-664 */
+.projectItem:last-child {
+  border-bottom: none;
+}
+
+/* preferences.html:666-668 */
+.projectItem:hover {
+  background: var(--bg-card-hover-preferences);
+}
+
+/* preferences.html:670-680 */
+.projectCheckbox {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--glass-border);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+/* preferences.html:682-686 */
+.projectItem.selected .projectCheckbox {
+  background: var(--gradient-purple);
+  border-color: transparent;
+  box-shadow: 0 2px 8px var(--accent-purple-glow);
+}
+
+/* preferences.html:688-695 */
+.projectCheckbox svg {
+  width: 12px;
+  height: 12px;
+  fill: white;
+  opacity: 0;
+  transform: scale(0.5);
+  transition: all 0.2s ease;
+}
+
+/* preferences.html:697-700 */
+.projectItem.selected .projectCheckbox svg {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* preferences.html:702-705 */
+.projectInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+/* preferences.html:707-713 */
+.projectName {
+  font-weight: 500;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* preferences.html:715-722 */
+.projectPath {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-family: 'SF Mono', Monaco, monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* preferences.html:724-728 */
+.projectLoading {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-tertiary);
+}
+
+/* preferences.html:730-734 */
+.projectEmpty {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-tertiary);
+}
+
+/* preferences.html:736-738 */
+.watchedProjects {
+  margin-bottom: 24px;
+}
+
+/* preferences.html:740-748 */
+.watchedProjectsTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* preferences.html:750-756 */
+.watchedProjectsCount {
+  background: var(--gradient-purple);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+}
+
+/* preferences.html:758-768 */
+.watchedProjectChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--bg-card-preferences);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  font-size: 12px;
+  margin: 0 6px 6px 0;
+}
+
+/* preferences.html:770-776 */
+.watchedProjectRemove {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+
+/* preferences.html:778-780 */
+.watchedProjectRemove:hover {
+  opacity: 1;
+}

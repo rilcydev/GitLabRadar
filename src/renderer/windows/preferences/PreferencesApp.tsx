@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { AccountsPage } from '../../features/preferences/AccountsPage/AccountsPage';
+import { ProjectsPage } from '../../features/preferences/ProjectsPage/ProjectsPage';
 import styles from './PreferencesApp.module.css';
 
 type Page = 'accounts' | 'projects' | 'general';
@@ -41,19 +42,11 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
-// Page titles/descriptions copied verbatim from preferences.html:854-855
-// (Projects), :873-874 (General). Accounts got its real content in Task 8
-// (src/renderer/features/preferences/AccountsPage/AccountsPage.tsx); Projects
-// and General remain stubs until Tasks 9-10.
-function ProjectsPage() {
-  return (
-    <div className={styles.page}>
-      <h1 className={styles.pageTitle}>Watched projects</h1>
-      <p className={styles.pageDesc}>Select projects whose pipelines you want to follow.</p>
-    </div>
-  );
-}
-
+// Page title/description copied verbatim from preferences.html:873-874
+// (General). Accounts got its real content in Task 8
+// (src/renderer/features/preferences/AccountsPage/AccountsPage.tsx), Projects
+// in Task 9 (src/renderer/features/preferences/ProjectsPage/ProjectsPage.tsx);
+// General remains a stub until Task 10.
 function GeneralPage() {
   return (
     <div className={styles.page}>
