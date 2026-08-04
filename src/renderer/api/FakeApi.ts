@@ -119,11 +119,17 @@ export function createFakeApi(overrides: FakeApiOverrides = {}): {
   };
 
   const config: GitLabBarApi['config'] = {
-    get: async (key) => configStore[key],
+    // structuredClone on the way out, mirroring the clone on the way in:
+    // without it, callers get a live reference into configStore and can
+    // corrupt it in place (e.g. mutating the returned `notifications`
+    // object) without ever going through `set`. The real IPC boundary makes
+    // that structurally impossible (structured-clone on every invoke reply),
+    // so the fake must reproduce that isolation, not just the write-side one.
+    get: async (key) => structuredClone(configStore[key]),
     set: async (key, value) => {
       configStore[key] = value;
     },
-    getAll: async () => ({ ...configStore }),
+    getAll: async () => structuredClone(configStore),
     ...overrides.config,
   };
 

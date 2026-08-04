@@ -36,4 +36,23 @@ describe('createFakeApi', () => {
     await api.config.set('viewMode', 'productOwner');
     await expect(api.config.get('viewMode')).resolves.toBe('productOwner');
   });
+
+  it('does not expose live references from config.get/getAll into the store', async () => {
+    const { api } = createFakeApi();
+
+    const notifications = await api.config.get('notifications');
+    notifications.enabled = false;
+    notifications.pipelineFailed = false;
+
+    const dismissedMRs = await api.config.get('dismissedMRs');
+    dismissedMRs.push(999);
+
+    const all = await api.config.getAll();
+    all.watchedProjectIds.push(123);
+
+    expect((await api.config.get('notifications')).enabled).toBe(true);
+    expect((await api.config.get('notifications')).pipelineFailed).toBe(true);
+    expect(await api.config.get('dismissedMRs')).toEqual([]);
+    expect((await api.config.getAll()).watchedProjectIds).toEqual([]);
+  });
 });
