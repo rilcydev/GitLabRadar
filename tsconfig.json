@@ -10,6 +10,9 @@
     "strict": false,
     "sourceMap": true,
     "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    },
     "outDir": "dist",
     "resolveJsonModule": true,
     "jsx": "react-jsx",
