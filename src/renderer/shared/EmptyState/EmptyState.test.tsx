@@ -33,4 +33,22 @@ describe('EmptyState', () => {
     render(<EmptyState message="..." action={<button>Configure GitLab</button>} />);
     expect(screen.getByRole('button', { name: 'Configure GitLab' })).toBeInTheDocument();
   });
+
+  // index.html:2235,2238-2239 -- ported markup keeps its source ids.
+  it('applies id/titleId/messageId to the container, title and message (Task 15)', () => {
+    const { container } = render(
+      <EmptyState
+        id="mrs-empty"
+        titleId="mrs-empty-title"
+        title="No Merge Requests"
+        messageId="mrs-empty-desc"
+        message="No open merge requests found for your account"
+      />
+    );
+    expect(container.querySelector('#mrs-empty')).not.toBeNull();
+    expect(container.querySelector('#mrs-empty-title')).toHaveTextContent('No Merge Requests');
+    expect(container.querySelector('#mrs-empty-desc')).toHaveTextContent(
+      'No open merge requests found for your account'
+    );
+  });
 });

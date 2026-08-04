@@ -3,7 +3,8 @@ import { useCallback, useEffect, useState } from 'react';
 // for the `@/*` alias on value imports (see src/renderer/windows/preferences
 // components for the same pre-existing gap).
 import { useApi } from '../../api/ApiContext';
-import { useData } from './DataProvider';
+import { MergeRequestsTab } from '../../features/merge-requests/MergeRequestsTab';
+import { useData, useMRDismissal } from './DataProvider';
 import styles from './MenubarApp.module.css';
 
 export type ViewMode = 'developer' | 'productOwner';
@@ -80,6 +81,7 @@ function headerSubtitle(mrCount: number, pipelineCount: number, releaseCount: nu
 export function MenubarApp() {
   const api = useApi();
   const data = useData();
+  const { dismissedMRIds } = useMRDismissal();
   const viewMode = useViewMode();
   const [activeTab, setActiveTab] = useState<TabId>('mrs');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -94,7 +96,14 @@ export function MenubarApp() {
     });
   }, [api]);
 
-  const mrCount = data.mergeRequests.length;
+  // Fix (Task 15): this badge used to be raw `data.mergeRequests.length`,
+  // but index.html:2463-2466 computes `mrCount.textContent` from
+  // `visibleMRs.length` -- `mergeRequests` filtered to exclude dismissed
+  // ids -- not the raw collection. Task 15 is what first wires up MR
+  // dismissal (`useMRDismissal`), so this is the first point the mismatch
+  // was reachable; fixed here rather than left to drift further. See
+  // task-15-report.md.
+  const mrCount = data.mergeRequests.filter((mr) => !dismissedMRIds.includes(mr.id)).length;
   const pipelineCount = data.pipelines.length;
   const releaseCount = data.releases.length;
   const untagCount = data.untagProjects.length;
@@ -163,7 +172,9 @@ export function MenubarApp() {
             <div
               id="mrs-content"
               className={activeTab === 'mrs' ? `${styles.tabContent} ${styles.tabContentActive}` : styles.tabContent}
-            />
+            >
+              <MergeRequestsTab />
+            </div>
             <div
               id="pipelines-content"
               className={

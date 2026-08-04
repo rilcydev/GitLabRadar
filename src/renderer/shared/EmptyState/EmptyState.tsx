@@ -22,15 +22,36 @@ export interface EmptyStateProps {
   icon?: ReactNode;
   /** e.g. the "Configure GitLab" / "Configure projects" buttons at index.html:2240,2271,2307. */
   action?: ReactNode;
+  /**
+   * `id`/`titleId`/`messageId` are NOT in the brief's literal
+   * `<EmptyState message={string} />` signature, added in Task 15. Every
+   * concrete `.empty-state` in the source carries its own DOM id on the
+   * container AND (mrs/po) on the title/desc text
+   * (index.html:2235,2238-2239 `mrs-empty`/`mrs-empty-title`/`mrs-empty-desc`;
+   * :2302,2305-2306 the `po-*` equivalents) that Task 15's MergeRequestsTab
+   * needs to reproduce -- ported markup keeps its source id attributes (a
+   * rule Task 13 was sent back for dropping). All three are optional so
+   * `<EmptyState message="..." />` still renders correctly with no ids,
+   * exactly as the brief's minimal example expects.
+   */
+  id?: string;
+  titleId?: string;
+  messageId?: string;
 }
 
 /** index.html:690-747 (.empty-state and its icon/title/desc/button parts). */
-export function EmptyState({ message, title, icon, action }: EmptyStateProps) {
+export function EmptyState({ message, title, icon, action, id, titleId, messageId }: EmptyStateProps) {
   return (
-    <div className={styles.emptyState}>
+    <div className={styles.emptyState} id={id}>
       {icon && <div className={styles.emptyIcon}>{icon}</div>}
-      {title && <div className={styles.emptyTitle}>{title}</div>}
-      <div className={styles.emptyDesc}>{message}</div>
+      {title && (
+        <div className={styles.emptyTitle} id={titleId}>
+          {title}
+        </div>
+      )}
+      <div className={styles.emptyDesc} id={messageId}>
+        {message}
+      </div>
       {action}
     </div>
   );

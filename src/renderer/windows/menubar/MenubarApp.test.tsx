@@ -1,6 +1,6 @@
 import userEvent from '@testing-library/user-event';
-import { act, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { act, screen, waitFor } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import type { MergeRequest, Pipeline, Release, UntagProject } from '@/shared/types';
 import { renderWithApi } from '../../../test/renderWithApi';
 import { DataProvider } from './DataProvider';
@@ -117,6 +117,61 @@ describe('MenubarApp', () => {
     expect(screen.getByTestId('pipeline-count')).toHaveTextContent('1');
     expect(screen.getByTestId('release-count')).toHaveTextContent('1');
     expect(screen.getByTestId('untag-count')).toHaveTextContent('1');
+  });
+
+  // Fix (Task 15): index.html:2463-2466 computes `#mrCount` from
+  // `visibleMRs.length` (dismissed ids filtered out), not the raw
+  // `mergeRequests` collection -- this badge used to use the raw length.
+  // Proven end-to-end here (not just by reading DataProvider's state)
+  // because the badge and the MRs tab share the same `dismissedMRIds` via
+  // `useMRDismissal`, and this is the only place both are visible at once.
+  it('the mrCount badge excludes a dismissed MR immediately after dismissal', async () => {
+    const mr = (id: number) =>
+      ({
+        id,
+        iid: id,
+        title: `MR ${id}`,
+        description: '',
+        webUrl: `https://gitlab.example.com/mr/${id}`,
+        projectId: 100,
+        projectName: 'Project',
+        projectPath: 'group/project',
+        author: { id: 1, username: 'cyril', name: 'Cyril', avatar_url: '' },
+        userRole: 'author',
+        accountId: 'acc-1',
+        state: 'opened',
+        draft: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        sourceBranch: 'feature/x',
+        targetBranch: 'main',
+        mergeStatus: 'can_be_merged',
+        hasConflicts: false,
+        reviewers: [],
+        assignees: [],
+        userNotesCount: 0,
+        userMentionedInNotes: false,
+      }) as unknown as MergeRequest;
+
+    const dismissMR = vi.fn().mockResolvedValue(undefined);
+    const { emit } = renderMenubar({ overrides: { gitlab: { dismissMR } } });
+
+    act(() =>
+      emit.dataUpdated({
+        mergeRequests: [mr(1), mr(2)],
+        pipelines: [],
+        releases: [],
+        status: 'green',
+        lastUpdated: new Date('2026-08-04T12:00:00Z'),
+      })
+    );
+
+    expect(await screen.findByTestId('mr-count')).toHaveTextContent('2');
+
+    await userEvent.click(screen.getAllByTitle('Hide this MR')[0]);
+
+    expect(dismissMR).toHaveBeenCalledWith(1);
+    await waitFor(() => expect(screen.getByTestId('mr-count')).toHaveTextContent('1'));
   });
 
   it('shows "No activity" in the header subtitle when every dataset is empty', async () => {

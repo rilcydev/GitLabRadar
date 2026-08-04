@@ -1,0 +1,441 @@
+/*
+ * Ported from src/renderer/index.html's "ENHANCED MR & PIPELINE DISPLAY"
+ * block (:1148-1321), "MR AGE INDICATORS" block (:1323-1390), "MR
+ * NOTES/COMMENTS BADGE" block (:1392-1428) and "MR ACTION BUTTONS" block
+ * (:1579-1613). `.item-avatar`/`.item-avatar-placeholder`/`.mini-avatar`/
+ * `.mini-avatar-placeholder` (:1158-1180,1262-1297) are NOT redefined here
+ * -- they are `Avatar`'s (Task 14). `.item`/`.item::before` (:442-476) are
+ * `ItemCard`'s.
+ *
+ * --bg-card and --shadow-md have no bare form (Task 6 token rule) -- this
+ * is the menubar window, so the -menubar variants are used throughout.
+ */
+
+/* ═══════════════════════════════════════════
+   MR AGE INDICATOR BAR
+   index.html:1326-1351 recolors ItemCard's `.item::before` per age tier and
+   forces it permanently visible (`opacity: 1`, not just on `:hover`). That
+   selector can't be reproduced by targeting `::before` from THIS module --
+   `.item` is a hashed class name owned by ItemCard.module.css, and a
+   same-specificity `.ageFresh::before` rule here would depend on CSS Module
+   import/bundle order to win the cascade tie, which is not something to
+   build pixel parity on. Instead this is a real, absolutely-positioned
+   element rendered as ItemCard's first child (ItemCard's `.item` is already
+   `position: relative; overflow: hidden`, exactly what the pseudo-element
+   relied on) -- same geometry, same colors, no cross-module specificity
+   fight, and (since every MR always has a `createdAt`) always one of the
+   five tiers below, never the hover-only default state.
+   ═══════════════════════════════════════════ */
+.ageBar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+}
+
+/* index.html:1326-1329 */
+.ageFresh {
+  background: linear-gradient(180deg, #10b981, #059669);
+}
+
+/* index.html:1330-1333 */
+.ageWarning {
+  background: linear-gradient(180deg, #f59e0b, #d97706);
+}
+
+/* index.html:1334-1337 */
+.ageAlert {
+  background: linear-gradient(180deg, #f97316, #ea580c);
+}
+
+/* index.html:1338-1341 */
+.ageDanger {
+  background: linear-gradient(180deg, #ef4444, #dc2626);
+}
+
+/* index.html:1342-1346 */
+.ageCritical {
+  background: linear-gradient(180deg, #ef4444, #b91c1c);
+  animation: agePulse 2s ease-in-out infinite;
+}
+
+/* index.html:1348-1351 */
+@keyframes agePulse {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: none;
+  }
+  50% {
+    opacity: 0.6;
+    box-shadow: -2px 0 8px rgba(239, 68, 68, 0.4);
+  }
+}
+
+/* ═══════════════════════════════════════════
+   LAYOUT
+   ═══════════════════════════════════════════ */
+/* index.html:526-529. The source also sets `style="width: 100%;"` inline
+   on this element (index.html:2831) -- reproduced as an inline style on
+   the element itself in MergeRequestRow.tsx, not folded in here, to stay
+   literal about what is a class rule vs. an inline override in the source. */
+.itemContent {
+  flex: 1;
+  min-width: 0;
+}
+
+/* index.html:1151-1156 */
+.itemHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+/* index.html:1181-1185 */
+.itemAuthorInfo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* index.html:1187-1194 */
+.itemAuthorName {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* index.html:1196-1199 */
+.itemAuthorUsername {
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
+/* index.html:2838 -- inline `style="margin-left: auto; display: flex;
+   align-items: center; gap: 6px;"` on the notes-badge/time-badge/dismiss
+   wrapper. This one has no dedicated class in the source; promoted to a
+   module class here since it's static (not data-driven) like the
+   `item-content` width above. */
+.headerRight {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ═══════════════════════════════════════════
+   NOTES/COMMENTS BADGE -- index.html:1392-1428
+   ═══════════════════════════════════════════ */
+.notesBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  background: rgba(139, 92, 246, 0.12);
+  color: var(--accent-purple);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  /* index.html:1423-1426 -- `.notes-badge.clickable`. Every rendered badge
+     is clickable in the port (the source only ever adds `.clickable` to a
+     badge it renders, index.html:2826), so it is folded into the base
+     rule rather than kept as a separate always-applied modifier. */
+  cursor: pointer;
+}
+
+.notesBadge:hover {
+  filter: brightness(1.2);
+}
+
+/* index.html:1408-1417 */
+.notesBadgeMentioned {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  animation: mentionPulse 2s ease-in-out infinite;
+}
+
+@keyframes mentionPulse {
+  0%,
+  100% {
+    box-shadow: none;
+  }
+  50% {
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.3);
+  }
+}
+
+.notesBadge svg {
+  width: 11px;
+  height: 11px;
+  fill: currentColor;
+}
+
+/* ═══════════════════════════════════════════
+   AGE TIME BADGE -- index.html:1353-1390
+   ═══════════════════════════════════════════ */
+.itemTimeBadge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.badgeFresh {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.badgeWarning {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.badgeAlert {
+  background: rgba(249, 115, 22, 0.15);
+  color: #f97316;
+  border: 1px solid rgba(249, 115, 22, 0.3);
+}
+
+.badgeDanger {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.badgeCritical {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  animation: badgePulse 2s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   DISMISS BUTTON -- index.html:628-658
+   Note: index.html:2841 sets `style="opacity: 0.5;"` inline on this
+   button, which -- having higher specificity than any class selector --
+   always wins over both this rule's implicit default and any `:hover`
+   rule. There is therefore no `:hover { opacity: 1 }` rule here to
+   reproduce index.html:645-647 (`.item:hover .item-dismiss`): reproducing
+   it would be dead code (it could never win against the inline style) AND
+   it can't be written faithfully from this module anyway, since `.item`
+   is ItemCard's hashed class, not this module's.
+   ═══════════════════════════════════════════ */
+.itemDismiss {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.itemDismiss:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--accent-red);
+}
+
+.itemDismiss svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
+/* ═══════════════════════════════════════════
+   TITLE / SUBTITLE -- index.html:531-560,1299-1321
+   ═══════════════════════════════════════════ */
+.itemTitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 6px;
+  letter-spacing: -0.2px;
+}
+
+/* index.html:1299-1309 */
+.draftBadge {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--accent-orange);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.itemSubtitle {
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.itemSubtitle code {
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 10px;
+  background: var(--bg-base-menubar);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--text-tertiary);
+}
+
+/* index.html:1311-1321 */
+.conflictBadge {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--accent-red);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* ═══════════════════════════════════════════
+   BRANCH INFO -- index.html:1201-1238
+   ═══════════════════════════════════════════ */
+.branchInfo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.branchTag {
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--bg-base-menubar);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+  max-width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.branchTagSource {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.3);
+  color: var(--accent-blue);
+}
+
+.branchTagTarget {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: var(--accent-green);
+}
+
+.branchArrow {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+/* ═══════════════════════════════════════════
+   PEOPLE ROW -- index.html:1240-1297
+   ═══════════════════════════════════════════ */
+.peopleRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.peopleGroup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.peopleLabel {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.peopleAvatars {
+  display: flex;
+  align-items: center;
+}
+
+/* ═══════════════════════════════════════════
+   MR ACTION BUTTONS -- index.html:1582-1613
+   ═══════════════════════════════════════════ */
+.mrActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.mrActionBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px dashed var(--glass-border);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.mrActionBtn:hover {
+  background: rgba(139, 92, 246, 0.1);
+  border-color: var(--accent-purple);
+  color: var(--accent-purple);
+  border-style: solid;
+}
+
+.mrActionBtn svg {
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
+}

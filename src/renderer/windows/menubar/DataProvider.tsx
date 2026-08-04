@@ -1,4 +1,12 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 import type { TrayStatus } from '@/shared/api/contract';
 import type { MergeRequest, Pipeline, Release, UntagProject } from '@/shared/types';
 // Relative import: eslint's import/no-unresolved has no TS-aware resolver
@@ -24,6 +32,24 @@ export interface Data {
   status: TrayStatus | null;
   error: string | undefined;
   lastUpdated: Date | null;
+  // Added in Task 15 -- not in the task-13 brief, but required to port
+  // renderMRs()'s loading gate (index.html:2470-2475) faithfully. Mirrors
+  // the vanilla `isLoading` module-level variable (index.html:2331): starts
+  // `true`, flips to `false` once the FIRST loadData() settles (success OR
+  // failure -- index.html:3855 and :3875) or once the first `data:updated`
+  // push arrives (index.html:3892), and never flips back. See
+  // task-15-report.md for why this belongs on `Data` rather than being
+  // reinvented locally inside MergeRequestsTab: pipelines/releases (Tasks
+  // 16-17) gate on the exact same flag (index.html:2909, :3137).
+  isLoading: boolean;
+  // Added in Task 15 -- mirrors the vanilla `hasAccounts` module-level
+  // variable (index.html:2332), set by `checkAccounts()`
+  // (index.html:3914-3923) at startup (index.html:3960) and again on every
+  // `data:updated` push (index.html:3894). Only the MRs empty-state text
+  // depends on it today (index.html:2482-2490), but it is app-wide account
+  // state, not MR-specific, so it lives here beside `isLoading` rather than
+  // being duplicated inside MergeRequestsTab.
+  hasAccounts: boolean;
 }
 
 const initialData: Data = {
@@ -35,13 +61,86 @@ const initialData: Data = {
   status: null,
   error: undefined,
   lastUpdated: null,
+  isLoading: true,
+  hasAccounts: false,
 };
 
 const DataContext = createContext<Data | null>(null);
 
+// Added in Task 15. index.html keeps `dismissedMRIds` as a single
+// module-level array (index.html:2334, loaded by loadDismissedMRs at
+// :2443-2452) that BOTH the mrCount badge computation (index.html:2463-2466)
+// and renderMRs' own filtering/list (index.html:2463,2542-2553,2758-2768)
+// read and mutate directly, since they are the same script scope. In React,
+// MenubarApp (the badge) and MergeRequestsTab (the list) are siblings, not
+// parent/child, so that shared mutable array has to live somewhere both can
+// reach -- DataProvider, the nearest common ancestor already wrapping both
+// in main.tsx, is that place. Deliberately a SEPARATE context from
+// `DataContext` (not folded into `Data`) so `useData()`'s contract stays
+// pure data with no mutator functions mixed in.
+interface MRDismissalContextValue {
+  dismissedMRIds: number[];
+  // index.html:2542-2553 (dismiss) -- awaits the IPC call, then appends
+  // the id locally, matching `dismissedMRIds.push(mrId)` exactly (not a
+  // re-fetch of config).
+  dismissMR: (id: number) => Promise<void>;
+  // index.html:2758-2768 ("Show all") -- awaits the IPC call, then resets
+  // the local list to empty, matching `dismissedMRIds = []`.
+  restoreMRs: () => Promise<void>;
+}
+
+const MRDismissalContext = createContext<MRDismissalContextValue | null>(null);
+
+export function useMRDismissal(): MRDismissalContextValue {
+  const ctx = useContext(MRDismissalContext);
+  if (!ctx) throw new Error('useMRDismissal must be used within a DataProvider');
+  return ctx;
+}
+
 export function DataProvider({ children }: { children: ReactNode }) {
   const api = useApi();
   const [data, setData] = useState<Data>(initialData);
+  const [dismissedMRIds, setDismissedMRIds] = useState<number[]>([]);
+
+  // index.html:2443-2452 (loadDismissedMRs), invoked as part of init()'s
+  // Promise.all (index.html:3961-3967) -- independent of loadData's own
+  // fetch, so it gets its own effect rather than being folded into the one
+  // below.
+  useEffect(() => {
+    let cancelled = false;
+    async function loadDismissedMRs() {
+      try {
+        const config = await api.config.getAll();
+        if (cancelled) return;
+        setDismissedMRIds(config.dismissedMRs || []);
+      } catch (err) {
+        // index.html:2449-2450
+        console.error('Error loading dismissed MRs:', err);
+      }
+    }
+    void loadDismissedMRs();
+    return () => {
+      cancelled = true;
+    };
+  }, [api]);
+
+  const dismissMR = useCallback(
+    async (id: number) => {
+      await api.gitlab.dismissMR(id);
+      setDismissedMRIds((prev) => [...prev, id]);
+    },
+    [api]
+  );
+
+  const restoreMRs = useCallback(async () => {
+    await api.gitlab.restoreMRs();
+    setDismissedMRIds([]);
+  }, [api]);
+
+  const mrDismissal = useMemo<MRDismissalContextValue>(
+    () => ({ dismissedMRIds, dismissMR, restoreMRs }),
+    [dismissedMRIds, dismissMR, restoreMRs]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -76,6 +175,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
           pipelines: pipes || [],
           releases: rels || [],
           lastUpdated: new Date(),
+          // index.html:3855 -- flips false in the same synchronous stretch
+          // as the three arrays above, before the untag fetch below starts.
+          isLoading: false,
         }));
 
         try {
@@ -91,14 +193,35 @@ export function DataProvider({ children }: { children: ReactNode }) {
           console.error('Untag load error:', e);
         }
       } catch (err) {
-        // index.html:3873-3874. The source's catch also leaves
-        // mergeRequests/pipelines/releases untouched -- it only flips local
-        // loading flags that have no equivalent field on `Data`.
+        // index.html:3873-3875. The source's catch also leaves
+        // mergeRequests/pipelines/releases untouched, but it DOES still flip
+        // isLoading false (index.html:3875) -- reproduced here; a permanent
+        // spinner after a failed initial load would be a behaviour change,
+        // not a port.
         console.error('Load error:', err);
+        if (cancelled || receivedDataPush) return;
+        setData((prev) => ({ ...prev, isLoading: false }));
+      }
+    }
+
+    // index.html:3914-3923 (checkAccounts), called at startup
+    // (index.html:3960) and again on every data:updated push
+    // (index.html:3894).
+    async function checkAccounts() {
+      try {
+        const accounts = await api.accounts.getAll();
+        if (cancelled) return;
+        setData((prev) => ({ ...prev, hasAccounts: !!(accounts && accounts.length > 0) }));
+      } catch (err) {
+        // index.html:3920-3922
+        console.error('Error checking accounts:', err);
+        if (cancelled) return;
+        setData((prev) => ({ ...prev, hasAccounts: false }));
       }
     }
 
     void loadData();
+    void checkAccounts();
 
     // Subscribes to all four pushed events per the task-13 brief. Only
     // `dataUpdated` and `untagDataUpdated` have a real consumer in
@@ -118,7 +241,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
         status: payload.status,
         error: payload.error,
         lastUpdated: payload.lastUpdated,
+        // index.html:3892
+        isLoading: false,
       }));
+      // index.html:3894
+      void checkAccounts();
     });
 
     const unsubRefreshStatus = api.on.refreshStatus(() => {
@@ -147,7 +274,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
     };
   }, [api]);
 
-  return <DataContext.Provider value={data}>{children}</DataContext.Provider>;
+  return (
+    <MRDismissalContext.Provider value={mrDismissal}>
+      <DataContext.Provider value={data}>{children}</DataContext.Provider>
+    </MRDismissalContext.Provider>
+  );
 }
 
 export function useData(): Data {

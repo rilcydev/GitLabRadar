@@ -1,6 +1,6 @@
-import { act, screen } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type { MergeRequest, Pipeline, Release, UntagProject } from '@/shared/types';
+import type { GitLabAccount, MergeRequest, Pipeline, Release, UntagProject } from '@/shared/types';
 import { renderWithApi } from '../../../test/renderWithApi';
 import { createFakeApi } from '../../api/FakeApi';
 import { DataProvider, useData } from './DataProvider';
@@ -24,6 +24,8 @@ function Probe() {
       <span data-testid="last-updated">
         {data.lastUpdated ? data.lastUpdated.toISOString() : 'null'}
       </span>
+      <span data-testid="is-loading">{String(data.isLoading)}</span>
+      <span data-testid="has-accounts">{String(data.hasAccounts)}</span>
     </div>
   );
 }
@@ -66,7 +68,7 @@ describe('DataProvider', () => {
     expect(screen.getByTestId('untag-excluded-count')).toHaveTextContent('5');
   });
 
-  it('starts with empty collections and a null lastUpdated before anything resolves', () => {
+  it('starts with empty collections and a null lastUpdated before anything resolves', async () => {
     renderWithApi(
       <DataProvider>
         <Probe />
@@ -80,6 +82,16 @@ describe('DataProvider', () => {
     expect(screen.getByTestId('untag-count')).toHaveTextContent('0');
     expect(screen.getByTestId('untag-excluded-count')).toHaveTextContent('0');
     expect(screen.getByTestId('last-updated')).toHaveTextContent('null');
+    // index.html:2331 -- `isLoading` only flips false once loadData()
+    // settles; here getMRs() never resolves, so the whole sequential
+    // await chain (getMRs -> getPipelines -> getReleases) never proceeds.
+    expect(screen.getByTestId('is-loading')).toHaveTextContent('true');
+
+    // Drains checkAccounts()'s independent (non-blocked) fetch so its
+    // setState doesn't leak an act() warning into the next test.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
   });
 
   it('replaces its data when data:updated arrives', async () => {
@@ -155,7 +167,7 @@ describe('DataProvider', () => {
     expect(screen.getByTestId('untag-excluded-count')).toHaveTextContent('3');
   });
 
-  it('unsubscribes all four events on unmount: no throw, no leaked state update', () => {
+  it('unsubscribes all four events on unmount: no throw, no leaked state update', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const { emit, unmount } = renderWithApi(
@@ -187,11 +199,21 @@ describe('DataProvider', () => {
       });
     }).not.toThrow();
 
+    // Also drains the initial (pre-unmount) checkAccounts()/loadData()
+    // calls, whose `cancelled` guard should make their eventual resolution
+    // a no-op -- draining here (before restoring the spy / ending the
+    // test) is what actually proves that, rather than letting them resolve
+    // silently after the mock is restored and misattributing any leak to
+    // whichever test happens to be running next.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
     expect(consoleError).not.toHaveBeenCalled();
     consoleError.mockRestore();
   });
 
-  it('leaves the shared event bus clean for a fresh mount after unmount', () => {
+  it('leaves the shared event bus clean for a fresh mount after unmount', async () => {
     // Reuses ONE fake (and therefore one underlying event bus) across two
     // mount/unmount cycles. If the first DataProvider's subscription had
     // leaked, the bus would carry two live listeners into the second
@@ -216,6 +238,13 @@ describe('DataProvider', () => {
       { fake: { api, emit } }
     );
 
+    // Drains both mounts' independent checkAccounts() fetches (the first
+    // one's is cancelled and a no-op; the second one's is not) before
+    // asserting on `consoleError`, so neither leaks an act() warning here.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
     act(() => {
       emit.dataUpdated({
         mergeRequests: [{ id: 1 } as unknown as MergeRequest],
@@ -226,8 +255,85 @@ describe('DataProvider', () => {
       });
     });
 
+    // index.html:3894: the `data:updated` handler itself kicks off ANOTHER
+    // (unawaited) checkAccounts() call -- drain that one too before
+    // asserting, for the same reason as above.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
     expect(screen.getByTestId('mr-count')).toHaveTextContent('1');
     expect(consoleError).not.toHaveBeenCalled();
     consoleError.mockRestore();
+  });
+
+  // Added in Task 15 -- see DataProvider.tsx's `isLoading`/`hasAccounts`
+  // doc comments for why these exist.
+  it('isLoading flips false once the initial load resolves', async () => {
+    renderWithApi(
+      <DataProvider>
+        <Probe />
+      </DataProvider>
+    );
+
+    expect(screen.getByTestId('is-loading')).toHaveTextContent('true');
+    await waitFor(() => expect(screen.getByTestId('is-loading')).toHaveTextContent('false'));
+  });
+
+  // index.html:3873-3875 -- the source flips `isLoading` false in BOTH the
+  // success and failure branches of loadData(); a permanently-stuck
+  // loading spinner after a failed initial fetch would be a behaviour
+  // change, not a port.
+  it('isLoading flips false even when the initial load fails', async () => {
+    renderWithApi(
+      <DataProvider>
+        <Probe />
+      </DataProvider>,
+      { overrides: { gitlab: { getMRs: async () => { throw new Error('boom'); } } } }
+    );
+
+    await waitFor(() => expect(screen.getByTestId('is-loading')).toHaveTextContent('false'));
+    // index.html:3873-3874: mergeRequests/pipelines/releases are left
+    // untouched by the failure path.
+    expect(screen.getByTestId('mr-count')).toHaveTextContent('0');
+  });
+
+  // index.html:3914-3923,3960
+  it('hasAccounts follows accounts.getAll() at startup', async () => {
+    renderWithApi(
+      <DataProvider>
+        <Probe />
+      </DataProvider>,
+      { overrides: { accounts: { getAll: async () => [{ id: 'a1' } as never] } } }
+    );
+
+    expect(screen.getByTestId('has-accounts')).toHaveTextContent('false');
+    expect(await screen.findByTestId('has-accounts')).toHaveTextContent('true');
+  });
+
+  // index.html:3894 -- checkAccounts() re-runs on every data:updated push.
+  it('hasAccounts re-checks accounts.getAll() on every data:updated push', async () => {
+    let accounts: GitLabAccount[] = [];
+    const { emit } = renderWithApi(
+      <DataProvider>
+        <Probe />
+      </DataProvider>,
+      { overrides: { accounts: { getAll: async () => accounts } } }
+    );
+
+    expect(await screen.findByTestId('has-accounts')).toHaveTextContent('false');
+
+    accounts = [{ id: 'a1' } as GitLabAccount];
+    act(() =>
+      emit.dataUpdated({
+        mergeRequests: [],
+        pipelines: [],
+        releases: [],
+        status: 'green',
+        lastUpdated: new Date('2026-08-04T12:00:00Z'),
+      })
+    );
+
+    expect(await screen.findByTestId('has-accounts')).toHaveTextContent('true');
   });
 });
