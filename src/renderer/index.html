@@ -3590,17 +3590,45 @@
       html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
       // Inline code: `code`
       html = html.replace(/`([^`]+)`/g, '<code style="font-family:\'SF Mono\',Monaco,monospace;font-size:11px;background:var(--bg-base);padding:1px 4px;border-radius:3px;">$1</code>');
-      // Links: [text](url). The URL lands in two different contexts here —
-      // a double-quoted HTML attribute value (href, and again inside
-      // onclick's attribute value), and a single-quoted JS string literal
-      // (inside onclick's decoded JS source) — and escapeHtml() above only
-      // escapes &, <, and >, leaving ' and " untouched. Each context needs
-      // its own escaping, applied in the right order: JS-string-escape
-      // first (so a literal ' can't end the string literal), then
-      // HTML-attribute-escape (so a literal " can't end the attribute the
-      // JS lives inside) — HTML entities are decoded by the parser before
-      // the JS is read, so the two passes cannot be merged or reordered.
+      // Links: [text](url). Two things must hold for the URL before it is
+      // embedded below:
+      //
+      // 1. Scheme allow-list. The <a>'s onclick handler (stopPropagation +
+      //    return false) only intercepts a plain left click — middle-click,
+      //    ctrl/cmd-click, and the browser's own context-menu "Open Link"
+      //    all bypass it and can navigate the raw href directly. A
+      //    javascript: (or data:, vbscript:, ...) href reached that way
+      //    runs arbitrary JS in the renderer with window.gitlabbar in
+      //    scope. So any URL whose scheme isn't in the allow-list is
+      //    rejected: rendered as the plain (already-escaped) label text
+      //    with no <a> at all, rather than a link with a neutered href —
+      //    that guarantees no route (click, middle-click, context menu,
+      //    ...) can act on it, and it can't crash the renderer. A relative
+      //    or protocol-relative URL (no scheme at all) can't resolve to a
+      //    script-executing scheme, so it is left untouched by this check,
+      //    exactly as it rendered before: rejecting it would turn a
+      //    working relative link into a dead one, which is not this fix's
+      //    job.
+      //
+      // 2. Context escaping (fix round 1). The URL lands in two different
+      //    contexts here — a double-quoted HTML attribute value (href, and
+      //    again inside onclick's attribute value), and a single-quoted JS
+      //    string literal (inside onclick's decoded JS source) — and
+      //    escapeHtml() above only escapes &, <, and >, leaving ' and "
+      //    untouched. Each context needs its own escaping, applied in the
+      //    right order: JS-string-escape first (so a literal ' can't end
+      //    the string literal), then HTML-attribute-escape (so a literal "
+      //    can't end the attribute the JS lives inside) — HTML entities
+      //    are decoded by the parser before the JS is read, so the two
+      //    passes cannot be merged or reordered.
       html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(match, label, url) {
+        const allowedLinkSchemes = ['http:', 'https:', 'mailto:'];
+        const cleanedUrl = url.trim().replace(/[\t\r\n]/g, '');
+        const schemeMatch = /^([a-zA-Z][a-zA-Z0-9+.-]*:)/.exec(cleanedUrl);
+        const scheme = schemeMatch ? schemeMatch[1].toLowerCase() : null;
+        if (scheme !== null && allowedLinkSchemes.indexOf(scheme) === -1) {
+          return label;
+        }
         const hrefUrl = url.replace(/"/g, '&quot;');
         const jsUrl = url.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
         return '<a href="' + hrefUrl + '" style="color:var(--accent-purple);text-decoration:none;" onclick="event.stopPropagation();window.gitlabbar.app.openExternal(\'' + jsUrl + '\');return false;">' + label + '</a>';

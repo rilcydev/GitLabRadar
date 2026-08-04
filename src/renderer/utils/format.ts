@@ -24,6 +24,33 @@ function escapeForMarkdown(text: string): string {
 }
 
 /**
+ * Schemes `simpleMarkdown`'s link rule will render as a clickable `<a>`.
+ * Anything else (`javascript:`, `data:`, `vbscript:`, a custom app
+ * scheme, ...) is rejected — see the link rule below for what "rejected"
+ * produces and why.
+ */
+const ALLOWED_LINK_SCHEMES = new Set(['http:', 'https:', 'mailto:']);
+
+/**
+ * Extracts a URL's scheme the way a browser's URL parser would, purely
+ * for the allow-list check in the link rule below — this is not a
+ * general-purpose URL parser. Trims leading/trailing ASCII whitespace and
+ * strips ASCII tab/CR/LF from anywhere in the string first, because
+ * browsers tolerate and silently remove those *within* a scheme before
+ * parsing it (e.g. `java\tscript:...` parses identically to
+ * `javascript:...`), so a naive prefix match on the raw string is not
+ * safe. Returns the lowercased scheme including its trailing colon (e.g.
+ * `"https:"`), or `null` if the string has no scheme at all — a relative
+ * or protocol-relative reference, which the allow-list does not touch
+ * (see the link rule below for why that is safe).
+ */
+function extractUrlScheme(url: string): string | null {
+  const cleaned = url.trim().replace(/[\t\r\n]/g, '');
+  const match = /^([a-zA-Z][a-zA-Z0-9+.-]*:)/.exec(cleaned);
+  return match ? match[1].toLowerCase() : null;
+}
+
+/**
  * Renders a constrained markdown subset to sanitised HTML intended for
  * `dangerouslySetInnerHTML`. Input is escaped first, so any HTML the
  * caller's text contains is neutralised before the markdown transforms
@@ -45,17 +72,41 @@ export function simpleMarkdown(text: string): string {
     /`([^`]+)`/g,
     '<code style="font-family:\'SF Mono\',Monaco,monospace;font-size:11px;background:var(--bg-base);padding:1px 4px;border-radius:3px;">$1</code>'
   );
-  // Links: [text](url). The URL lands in two different contexts here — a
-  // double-quoted HTML attribute value (href, and again inside onclick's
-  // attribute value), and a single-quoted JS string literal (inside
-  // onclick's decoded JS source) — and escapeForMarkdown() above only
-  // escaped &, <, and >, leaving ' and " untouched. Each context needs its
-  // own escaping, applied in the right order: JS-string-escape first (so a
-  // literal ' can't end the string literal), then HTML-attribute-escape
-  // (so a literal " can't end the attribute the JS lives inside) — HTML
-  // entities are decoded by the parser before the JS is read, so the two
-  // passes cannot be merged or reordered.
+  // Links: [text](url). Two things must hold for the URL before it is
+  // embedded below:
+  //
+  // 1. Scheme allow-list. The <a>'s onclick handler (stopPropagation +
+  //    return false) only intercepts a plain left click — middle-click,
+  //    ctrl/cmd-click, and the browser's own context-menu "Open Link" all
+  //    bypass it and can navigate the raw href directly. A javascript:
+  //    (or data:, vbscript:, ...) href reached that way runs arbitrary JS
+  //    in the renderer with window.gitlabbar in scope. So any URL whose
+  //    scheme isn't in the allow-list is rejected: rendered as the plain
+  //    (already-escaped) label text with no <a> at all, rather than a
+  //    link with a neutered href — that guarantees no route (click,
+  //    middle-click, context menu, ...) can act on it, and it can't crash
+  //    the renderer. A relative or protocol-relative URL (no scheme at
+  //    all — extractUrlScheme returns null) can't resolve to a
+  //    script-executing scheme, so it is left untouched by this check,
+  //    exactly as it rendered before: rejecting it would turn a working
+  //    relative link into a dead one, which is not this fix's job.
+  //
+  // 2. Context escaping (fix round 1). The URL lands in two different
+  //    contexts here — a double-quoted HTML attribute value (href, and
+  //    again inside onclick's attribute value), and a single-quoted JS
+  //    string literal (inside onclick's decoded JS source) — and
+  //    escapeForMarkdown() above only escaped &, <, and >, leaving ' and
+  //    " untouched. Each context needs its own escaping, applied in the
+  //    right order: JS-string-escape first (so a literal ' can't end the
+  //    string literal), then HTML-attribute-escape (so a literal " can't
+  //    end the attribute the JS lives inside) — HTML entities are decoded
+  //    by the parser before the JS is read, so the two passes cannot be
+  //    merged or reordered.
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, label: string, url: string) => {
+    const scheme = extractUrlScheme(url);
+    if (scheme !== null && !ALLOWED_LINK_SCHEMES.has(scheme)) {
+      return label;
+    }
     const hrefUrl = url.replace(/"/g, '&quot;');
     const jsUrl = url
       .replace(/\\/g, '\\\\')

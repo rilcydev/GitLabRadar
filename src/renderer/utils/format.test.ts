@@ -105,6 +105,71 @@ describe('simpleMarkdown', () => {
     expect(html.match(/\sonclick="/g)).toHaveLength(1);
   });
 
+  it('rejects a javascript: URL, rendering the label as plain text with no link at all', () => {
+    // Fix round 2 (security). Approved follow-up to round 1: the onclick
+    // guard (stopPropagation + return false) only intercepts a plain left
+    // click. Middle-click, ctrl/cmd-click, and the browser's own
+    // context-menu "Open Link" all bypass it and can navigate the raw
+    // href directly — there is no will-navigate handler in tray.ts to
+    // catch what gets through. A javascript: href reached that way runs
+    // arbitrary JS in the renderer with window.gitlabbar in scope. Reject
+    // by omitting the <a> entirely (not just neutering href) so there is
+    // no element for any route to act on.
+    expect(simpleMarkdown('[click me](javascript:window.__pwned=1)')).toBe('click me');
+  });
+
+  it('rejects a javascript: URL padded with whitespace and mixed-case, not just an exact lowercase match', () => {
+    // Fix round 2 (security). A naive `url.startsWith('javascript:')`
+    // check would miss this. The scheme check must trim surrounding
+    // whitespace and normalise case before comparing.
+    expect(simpleMarkdown('[click me](  JaVaScRiPt:window.__pwned=1)')).toBe('click me');
+  });
+
+  it('rejects a javascript: URL that hides the scheme name behind an embedded tab', () => {
+    // Fix round 2 (security). Browsers strip ASCII tab/CR/LF from anywhere
+    // in a URL before parsing its scheme, so "java\tscript:" parses
+    // identically to "javascript:". The scheme check must do the same
+    // stripping, or this variant walks straight through.
+    expect(simpleMarkdown('[click me](java\tscript:window.__pwned=1)')).toBe('click me');
+  });
+
+  it('still renders an http: URL exactly as before the scheme allow-list', () => {
+    expect(simpleMarkdown('[Docs](http://example.com/docs)')).toBe(
+      '<a href="http://example.com/docs" style="color:var(--accent-purple);text-decoration:none;" onclick="event.stopPropagation();window.gitlabbar.app.openExternal(\'http://example.com/docs\');return false;">Docs</a>'
+    );
+  });
+
+  it('still renders an https: URL exactly as before the scheme allow-list', () => {
+    expect(simpleMarkdown('[Docs](https://example.com/docs)')).toBe(
+      '<a href="https://example.com/docs" style="color:var(--accent-purple);text-decoration:none;" onclick="event.stopPropagation();window.gitlabbar.app.openExternal(\'https://example.com/docs\');return false;">Docs</a>'
+    );
+  });
+
+  it('still renders a mailto: URL exactly as before the scheme allow-list', () => {
+    expect(simpleMarkdown('[Contact](mailto:person@example.com)')).toBe(
+      '<a href="mailto:person@example.com" style="color:var(--accent-purple);text-decoration:none;" onclick="event.stopPropagation();window.gitlabbar.app.openExternal(\'mailto:person@example.com\');return false;">Contact</a>'
+    );
+  });
+
+  it('preserves the current (pre-fix) output for a relative URL, which has no scheme to reject', () => {
+    // Fix round 2: a scheme allow-list must not turn a working relative
+    // link into a dead one. [x](/foo) has no scheme at all — it is left
+    // untouched by the check, exactly as it rendered before this fix.
+    expect(simpleMarkdown('[Home](/foo)')).toBe(
+      '<a href="/foo" style="color:var(--accent-purple);text-decoration:none;" onclick="event.stopPropagation();window.gitlabbar.app.openExternal(\'/foo\');return false;">Home</a>'
+    );
+  });
+
+  it('preserves the current (pre-fix) output for a protocol-relative URL, which has no scheme to reject', () => {
+    // Fix round 2: [x](//evil.example) also has no scheme component (it
+    // starts with "//", not "letters:") — it cannot resolve to
+    // javascript:/data:/etc, so it is out of scope for this check and is
+    // left untouched, exactly as it rendered before this fix.
+    expect(simpleMarkdown('[CDN](//evil.example/lib.js)')).toBe(
+      '<a href="//evil.example/lib.js" style="color:var(--accent-purple);text-decoration:none;" onclick="event.stopPropagation();window.gitlabbar.app.openExternal(\'//evil.example/lib.js\');return false;">CDN</a>'
+    );
+  });
+
   it('converts list items - item / * item to bullets', () => {
     expect(simpleMarkdown('- one')).toBe('&bull; one');
     expect(simpleMarkdown('* two')).toBe('&bull; two');
