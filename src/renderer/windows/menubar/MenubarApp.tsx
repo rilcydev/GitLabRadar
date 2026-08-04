@@ -43,19 +43,23 @@ type TabId = 'mrs' | 'pipelines' | 'releases' | 'untag';
 interface TabDef {
   id: TabId;
   label: string;
-  // Mirrors the source's badge element id (index.html:2212,2216,2220,2224:
-  // #mrCount/#pipelineCount/#releaseCount/#untagCount) as a kebab-case
-  // data-testid, matching the `mr-count` id the task-13 brief's own example
-  // test asserts on.
+  // Literal badge element id from the source (index.html:2212,2216,2220,2224:
+  // #mrCount/#pipelineCount/#releaseCount/#untagCount) -- ported markup keeps
+  // its identity attribute.
+  badgeId: string;
+  // Fix round 1: `data-testid` is a convention this task introduced that
+  // exists nowhere else in the codebase. Kept ALONGSIDE `badgeId` (not
+  // instead of it) purely so the existing tests don't have to be rewritten
+  // to query by DOM id; the source id is what actually ships.
   testId: string;
 }
 
 // Verbatim labels and badge element ids from index.html:2209-2226.
 const TABS: TabDef[] = [
-  { id: 'mrs', label: 'MRs', testId: 'mr-count' },
-  { id: 'pipelines', label: 'Pipelines', testId: 'pipeline-count' },
-  { id: 'releases', label: 'Releases', testId: 'release-count' },
-  { id: 'untag', label: 'Untag', testId: 'untag-count' },
+  { id: 'mrs', label: 'MRs', badgeId: 'mrCount', testId: 'mr-count' },
+  { id: 'pipelines', label: 'Pipelines', badgeId: 'pipelineCount', testId: 'pipeline-count' },
+  { id: 'releases', label: 'Releases', badgeId: 'releaseCount', testId: 'release-count' },
+  { id: 'untag', label: 'Untag', badgeId: 'untagCount', testId: 'untag-count' },
 ];
 
 // index.html:2426-2438. Pure function of the four datasets -- the source
@@ -112,12 +116,13 @@ export function MenubarApp() {
         </div>
         <div className={styles.headerContent}>
           <div className={styles.headerTitle}>GitLabBar</div>
-          <div className={styles.headerSubtitle}>
+          <div className={styles.headerSubtitle} id="headerSubtitle">
             {headerSubtitle(mrCount, pipelineCount, releaseCount, untagCount)}
           </div>
         </div>
         <button
           type="button"
+          id="refreshBtn"
           className={isRefreshing ? `${styles.refreshBtn} ${styles.refreshBtnSpinning}` : styles.refreshBtn}
           title="Refresh"
           onClick={handleRefresh}
@@ -139,7 +144,7 @@ export function MenubarApp() {
                 onClick={() => setActiveTab(tab.id)}
               >
                 <span>{tab.label}</span>
-                <span className={styles.tabBadge} data-testid={tab.testId}>
+                <span className={styles.tabBadge} id={tab.badgeId} data-testid={tab.testId}>
                   {badgeCounts[tab.id]}
                 </span>
               </button>

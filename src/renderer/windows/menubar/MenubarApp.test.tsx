@@ -68,6 +68,21 @@ describe('MenubarApp', () => {
     expect(container.querySelector('#mrs-content')).not.toBeNull();
   });
 
+  // Fix round 1: the badge/refresh-button/header-subtitle ids
+  // (index.html:2212,2216,2220,2224,2197,2195) were dropped in favor of
+  // data-testid-only lookups. Ported markup keeps its identity attributes;
+  // data-testid is additive, not a replacement.
+  it('keeps the literal source ids on the badges, refresh button, and header subtitle', async () => {
+    const { container } = renderMenubar();
+    expect(container.querySelector('#mrCount')).not.toBeNull();
+    expect(container.querySelector('#pipelineCount')).not.toBeNull();
+    expect(container.querySelector('#releaseCount')).not.toBeNull();
+    expect(container.querySelector('#untagCount')).not.toBeNull();
+    expect(container.querySelector('#refreshBtn')).not.toBeNull();
+    expect(container.querySelector('#headerSubtitle')).not.toBeNull();
+    await screen.findByTestId('mr-count');
+  });
+
   it('badge counts follow useData(), all starting at 0', async () => {
     renderMenubar();
     expect(screen.getByTestId('mr-count')).toHaveTextContent('0');
@@ -135,7 +150,7 @@ describe('MenubarApp', () => {
       overrides: { gitlab: { refresh: async () => { refreshCalled = true; } } },
     });
 
-    const refreshBtn = container.querySelector('button[title="Refresh"]');
+    const refreshBtn = container.querySelector('#refreshBtn');
     expect(refreshBtn).not.toBeNull();
     await userEvent.click(refreshBtn as HTMLElement);
 

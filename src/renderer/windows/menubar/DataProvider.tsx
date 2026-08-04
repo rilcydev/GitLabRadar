@@ -11,6 +11,11 @@ export interface Data {
   pipelines: Pipeline[];
   releases: Release[];
   untagProjects: UntagProject[];
+  // index.html:3735,3746-3749: gates the untag empty state and drives the
+  // "N projects excluded (no tags)" notice. Not derivable from
+  // `untagProjects.length` -- it's a disjoint count of projects excluded
+  // from that list entirely, so it has to be carried alongside it.
+  untagExcludedCount: number;
   // Set only by `data:updated` -- see index.html:3886-3903. The vanilla app
   // never keeps these as persistent top-level state (they only ever exist
   // inside that one event handler's closure), so there is no source
@@ -26,6 +31,7 @@ const initialData: Data = {
   pipelines: [],
   releases: [],
   untagProjects: [],
+  untagExcludedCount: 0,
   status: null,
   error: undefined,
   lastUpdated: null,
@@ -78,6 +84,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           setData((prev) => ({
             ...prev,
             untagProjects: untagData?.untagProjects || [],
+            untagExcludedCount: untagData?.excludedCount || 0,
           }));
         } catch (e) {
           // index.html:3867-3869
@@ -127,6 +134,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setData((prev) => ({
         ...prev,
         untagProjects: payload?.untagProjects || [],
+        untagExcludedCount: payload?.excludedCount || 0,
       }));
     });
 

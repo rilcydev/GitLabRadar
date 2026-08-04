@@ -18,6 +18,7 @@ function Probe() {
       <span data-testid="pipeline-count">{data.pipelines.length}</span>
       <span data-testid="release-count">{data.releases.length}</span>
       <span data-testid="untag-count">{data.untagProjects.length}</span>
+      <span data-testid="untag-excluded-count">{data.untagExcludedCount}</span>
       <span data-testid="status">{data.status ?? 'null'}</span>
       <span data-testid="error">{data.error ?? 'none'}</span>
       <span data-testid="last-updated">
@@ -46,7 +47,7 @@ describe('DataProvider', () => {
             getReleases: async () => [release],
             getUntagProjects: async () => ({
               untagProjects: [untagProject],
-              excludedCount: 0,
+              excludedCount: 5,
               lastUpdated: new Date('2026-08-04T10:00:00Z'),
             }),
           },
@@ -60,6 +61,9 @@ describe('DataProvider', () => {
     // Untag data is fetched in a second, nested step after the first three
     // resolve (index.html:3845-3871) -- wait for it separately.
     expect(await screen.findByTestId('untag-count')).toHaveTextContent('1');
+    // Fix round 1: untagExcludedCount must be populated on the initial-load
+    // path exactly like untagProjects is, not just on the push path.
+    expect(screen.getByTestId('untag-excluded-count')).toHaveTextContent('5');
   });
 
   it('starts with empty collections and a null lastUpdated before anything resolves', () => {
@@ -74,6 +78,7 @@ describe('DataProvider', () => {
     expect(screen.getByTestId('pipeline-count')).toHaveTextContent('0');
     expect(screen.getByTestId('release-count')).toHaveTextContent('0');
     expect(screen.getByTestId('untag-count')).toHaveTextContent('0');
+    expect(screen.getByTestId('untag-excluded-count')).toHaveTextContent('0');
     expect(screen.getByTestId('last-updated')).toHaveTextContent('null');
   });
 
@@ -145,6 +150,9 @@ describe('DataProvider', () => {
     // in-flight initial loadData() fetch settle before the test ends, so its
     // background setData doesn't leak an act() warning into the next test.
     expect(await screen.findByTestId('untag-count')).toHaveTextContent('2');
+    // Fix round 1: untagExcludedCount must be populated on the push path
+    // exactly like untagProjects is, not just on the initial-load path.
+    expect(screen.getByTestId('untag-excluded-count')).toHaveTextContent('3');
   });
 
   it('unsubscribes all four events on unmount: no throw, no leaked state update', () => {

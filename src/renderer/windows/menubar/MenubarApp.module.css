@@ -1,7 +1,8 @@
 /*
  * Ported from src/renderer/index.html (the vanilla menubar window Task 19
  * replaces -- see the header rules at :118-227, the tabs rules at :228-307,
- * and the content rule at :348-357). Literal values are replaced with
+ * and the content rules at :348-388, including its custom scrollbar at
+ * :359-374). Literal values are replaced with
  * var(--…) references into src/renderer/styles/tokens.css. Per the token
  * binding rule established in Task 6: a bare token name is identical in
  * both windows; the six split tokens (--bg-base, --bg-elevated, --bg-card,
@@ -244,6 +245,24 @@
   overflow-y: auto;
   overflow-x: hidden;
   padding: 16px 20px;
+}
+
+/* index.html:359-374 */
+.content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.content::-webkit-scrollbar-thumb {
+  background: var(--text-muted);
+  border-radius: 3px;
+}
+
+.content::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
 }
 
 /* index.html:376-388. All four panes stay mounted; only visibility toggles
