@@ -3590,8 +3590,21 @@
       html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
       // Inline code: `code`
       html = html.replace(/`([^`]+)`/g, '<code style="font-family:\'SF Mono\',Monaco,monospace;font-size:11px;background:var(--bg-base);padding:1px 4px;border-radius:3px;">$1</code>');
-      // Links: [text](url)
-      html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" style="color:var(--accent-purple);text-decoration:none;" onclick="event.stopPropagation();window.gitlabbar.app.openExternal(\'$2\');return false;">$1</a>');
+      // Links: [text](url). The URL lands in two different contexts here —
+      // a double-quoted HTML attribute value (href, and again inside
+      // onclick's attribute value), and a single-quoted JS string literal
+      // (inside onclick's decoded JS source) — and escapeHtml() above only
+      // escapes &, <, and >, leaving ' and " untouched. Each context needs
+      // its own escaping, applied in the right order: JS-string-escape
+      // first (so a literal ' can't end the string literal), then
+      // HTML-attribute-escape (so a literal " can't end the attribute the
+      // JS lives inside) — HTML entities are decoded by the parser before
+      // the JS is read, so the two passes cannot be merged or reordered.
+      html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(match, label, url) {
+        const hrefUrl = url.replace(/"/g, '&quot;');
+        const jsUrl = url.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        return '<a href="' + hrefUrl + '" style="color:var(--accent-purple);text-decoration:none;" onclick="event.stopPropagation();window.gitlabbar.app.openExternal(\'' + jsUrl + '\');return false;">' + label + '</a>';
+      });
       // List items: - item
       html = html.replace(/^[-*] (.+)$/gm, '&bull; $1');
       // Line breaks

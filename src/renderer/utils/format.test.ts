@@ -54,6 +54,57 @@ describe('simpleMarkdown', () => {
     );
   });
 
+  it('renders a benign URL identically to before the security fix (parity check)', () => {
+    // Fix round 1: this exact URL/output pair must not change. If this
+    // test breaks, the escaping fix altered normal-case rendering, which
+    // it must not.
+    expect(simpleMarkdown('[foo](https://gitlab.laddit.io/foo)')).toBe(
+      '<a href="https://gitlab.laddit.io/foo" style="color:var(--accent-purple);text-decoration:none;" onclick="event.stopPropagation();window.gitlabbar.app.openExternal(\'https://gitlab.laddit.io/foo\');return false;">foo</a>'
+    );
+  });
+
+  it('escapes a single quote in the URL so it cannot break out of the onclick JS string literal', () => {
+    // Fix round 1 (security). Before the fix, escapeForMarkdown() leaves
+    // ' untouched, and the link rule substituted the raw URL straight into
+    // a single-quoted JS string inside onclick="...openExternal('$2')...".
+    // A URL containing an unescaped ' terminates that string early and lets
+    // the rest of the URL run as JS in the menubar's renderer context, with
+    // access to window.gitlabbar (32 IPC commands: account add/remove/
+    // update, MR assign/dismiss, config writes).
+    const payload = "https://evil.example/a';window.__pwned=1;//";
+    const html = simpleMarkdown(`[click me](${payload})`);
+
+    expect(html).toBe(
+      '<a href="https://evil.example/a\';window.__pwned=1;//" style="color:var(--accent-purple);text-decoration:none;" ' +
+        'onclick="event.stopPropagation();window.gitlabbar.app.openExternal(\'https://evil.example/a\\\';window.__pwned=1;//\');return false;">click me</a>'
+    );
+    // The decoded onclick handler must contain the payload only inside an
+    // unbroken, backslash-escaped JS string literal — never as a bare
+    // `');` sequence that would close the string and run as a new statement.
+    expect(html).not.toContain("a');window.__pwned");
+  });
+
+  it('escapes a double quote in the URL so it cannot break out of the HTML attribute or inject a second onclick', () => {
+    // Fix round 1 (security). Before the fix, a URL containing an
+    // unescaped " terminates the href="..." attribute early (href comes
+    // first in the generated tag), letting the rest of the URL be parsed
+    // as new HTML attributes on the same <a> — including a second
+    // `onclick="..."` that, by HTML's duplicate-attribute rule (first
+    // occurrence wins), overrides the app's real onclick handler entirely.
+    // A normal click is then enough to run attacker-controlled JS.
+    const payload = 'x" onclick="window.__pwned=1';
+    const html = simpleMarkdown(`[click me](${payload})`);
+
+    expect(html).toBe(
+      '<a href="x&quot; onclick=&quot;window.__pwned=1" style="color:var(--accent-purple);text-decoration:none;" ' +
+        'onclick="event.stopPropagation();window.gitlabbar.app.openExternal(\'x&quot; onclick=&quot;window.__pwned=1\');return false;">click me</a>'
+    );
+    // Exactly one href and one onclick attribute must survive — proof no
+    // second (attacker-controlled) attribute was injected into the tag.
+    expect(html.match(/\shref="/g)).toHaveLength(1);
+    expect(html.match(/\sonclick="/g)).toHaveLength(1);
+  });
+
   it('converts list items - item / * item to bullets', () => {
     expect(simpleMarkdown('- one')).toBe('&bull; one');
     expect(simpleMarkdown('* two')).toBe('&bull; two');
@@ -85,7 +136,18 @@ describe('formatDateTime', () => {
     process.env.TZ = 'UTC';
   });
   afterEach(() => {
-    process.env.TZ = originalTz;
+    // Fix round 1 (test hygiene): on a machine with no TZ set,
+    // originalTz is `undefined`. Assigning `process.env.TZ = undefined`
+    // coerces to the string "undefined" rather than removing the key,
+    // which would silently force UTC on later Date-sensitive code in the
+    // same process under pool: 'forks'/'threads' with singleFork/
+    // singleThread (no per-file isolation). Restore by deleting the key
+    // when there was no original value.
+    if (originalTz === undefined) {
+      delete process.env.TZ;
+    } else {
+      process.env.TZ = originalTz;
+    }
   });
 
   it('returns empty string for falsy input', () => {

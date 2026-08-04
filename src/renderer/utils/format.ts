@@ -27,10 +27,7 @@ function escapeForMarkdown(text: string): string {
  * Renders a constrained markdown subset to sanitised HTML intended for
  * `dangerouslySetInnerHTML`. Input is escaped first, so any HTML the
  * caller's text contains is neutralised before the markdown transforms
- * run. Note: the generated `<a>` tag's `onclick` handler substitutes the
- * URL into the string unescaped (same as the original) — a URL containing
- * a single quote would break out of the handler. That is a pre-existing
- * property of the source being ported, not something fixed here.
+ * run.
  */
 export function simpleMarkdown(text: string): string {
   if (!text) return '';
@@ -48,11 +45,28 @@ export function simpleMarkdown(text: string): string {
     /`([^`]+)`/g,
     '<code style="font-family:\'SF Mono\',Monaco,monospace;font-size:11px;background:var(--bg-base);padding:1px 4px;border-radius:3px;">$1</code>'
   );
-  // Links: [text](url)
-  html = html.replace(
-    /\[([^\]]+)\]\(([^)]+)\)/g,
-    '<a href="$2" style="color:var(--accent-purple);text-decoration:none;" onclick="event.stopPropagation();window.gitlabbar.app.openExternal(\'$2\');return false;">$1</a>'
-  );
+  // Links: [text](url). The URL lands in two different contexts here — a
+  // double-quoted HTML attribute value (href, and again inside onclick's
+  // attribute value), and a single-quoted JS string literal (inside
+  // onclick's decoded JS source) — and escapeForMarkdown() above only
+  // escaped &, <, and >, leaving ' and " untouched. Each context needs its
+  // own escaping, applied in the right order: JS-string-escape first (so a
+  // literal ' can't end the string literal), then HTML-attribute-escape
+  // (so a literal " can't end the attribute the JS lives inside) — HTML
+  // entities are decoded by the parser before the JS is read, so the two
+  // passes cannot be merged or reordered.
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, label: string, url: string) => {
+    const hrefUrl = url.replace(/"/g, '&quot;');
+    const jsUrl = url
+      .replace(/\\/g, '\\\\')
+      .replace(/'/g, "\\'")
+      .replace(/"/g, '&quot;');
+    return (
+      `<a href="${hrefUrl}" style="color:var(--accent-purple);text-decoration:none;" ` +
+      `onclick="event.stopPropagation();window.gitlabbar.app.openExternal('${jsUrl}');return false;">` +
+      `${label}</a>`
+    );
+  });
   // List items: - item
   html = html.replace(/^[-*] (.+)$/gm, '&bull; $1');
   // Line breaks
