@@ -7,34 +7,45 @@ import type { GitLabBarApi } from '@/shared/api/contract';
 // pre-existing gap), even though tsc/Vite/Vitest all resolve it fine.
 // Relative paths sidestep it.
 import { ApiProvider } from '../renderer/api/ApiContext';
-import { createFakeApi, type FakeEmitter } from '../renderer/api/FakeApi';
+import { createFakeApi, type FakeApiOverrides, type FakeEmitter } from '../renderer/api/FakeApi';
 
-// Renders `ui` wrapped in a fresh `ApiProvider`. When no `api` is supplied,
-// a brand-new `createFakeApi()` backs the render -- a new instance per call,
-// so two renders never share state -- and its paired `emit` is returned
-// alongside it, letting the test drive pushed events (dataUpdated,
-// refreshStatus, error, untagDataUpdated) without constructing the fake
-// itself. When the caller supplies their own `api` (e.g. from their own
-// `createFakeApi(overrides)` call, or a hand-built stub), there is no
-// matching event bus to hand back, so `emit` comes back `undefined` rather
-// than a fabricated one; callers that need both overrides and `emit`
-// together already have `emit` from their own `createFakeApi(overrides)`
-// call and can use that directly.
+export type RenderWithApiOptions = RenderOptions & {
+  // Common path: helper builds the fake for you. A test that just wants a
+  // stubbed method never has to touch `createFakeApi` itself.
+  overrides?: FakeApiOverrides;
+  // Escape hatch: caller supplies both halves of an already-built fake
+  // together, so `api` and its matching `emit` can never come apart -- there
+  // is no door here to receive an `api` without the event bus that backs it.
+  fake?: { api: GitLabBarApi; emit: FakeEmitter };
+};
+
+// Renders `ui` wrapped in a fresh `ApiProvider` and always returns a real,
+// non-optional `{ api, emit }` pair alongside the render result -- no `?.`
+// or `!` ever needed at a call site.
+//
+// - Neither `overrides` nor `fake` given: builds a brand-new `createFakeApi()`
+//   per call, so two renders never share state (config store or event bus).
+// - `overrides` given: builds the fake with them (`createFakeApi(overrides)`).
+// - `fake` given: uses the supplied `{ api, emit }` pair as-is -- for callers
+//   that already built their own fake (e.g. to hold onto `emit` themselves
+//   before render) and want `renderWithApi` to reuse it rather than build a
+//   second, unrelated one.
+// - Both given: throws. Passing an `overrides`-built request alongside an
+//   already-built `fake` is a contradiction in the caller, not a case to
+//   silently resolve one way or the other.
 export function renderWithApi(
   ui: ReactElement,
-  { api, ...options }: { api?: GitLabBarApi } & RenderOptions = {}
+  { overrides, fake, ...options }: RenderWithApiOptions = {}
 ) {
-  let resolvedApi = api;
-  let emit: FakeEmitter | undefined;
-  if (!resolvedApi) {
-    const fake = createFakeApi();
-    resolvedApi = fake.api;
-    emit = fake.emit;
+  if (overrides && fake) {
+    throw new Error('renderWithApi: pass either `overrides` or `fake`, not both');
   }
 
+  const { api, emit } = fake ?? createFakeApi(overrides);
+
   return {
-    api: resolvedApi,
+    api,
     emit,
-    ...render(<ApiProvider api={resolvedApi}>{ui}</ApiProvider>, options),
+    ...render(<ApiProvider api={api}>{ui}</ApiProvider>, options),
   };
 }
