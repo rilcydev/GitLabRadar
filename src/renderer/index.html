@@ -3608,7 +3608,16 @@
       //    script-executing scheme, so it is left untouched by this check,
       //    exactly as it rendered before: rejecting it would turn a
       //    working relative link into a dead one, which is not this fix's
-      //    job.
+      //    job. Scheme detection mirrors the WHATWG URL Standard's basic
+      //    parser preprocessing (the parser that actually resolves the
+      //    rendered href) in two steps: strip any *leading and trailing*
+      //    C0 control (\x00-\x1f) or space (\x20) — not just
+      //    String.prototype.trim()'s narrower ECMA-262 whitespace set,
+      //    which misses e.g. \x01/\x08/\x1f and would let a
+      //    "\x01javascript:..." URL through misclassified as scheme-less
+      //    — then separately strip ASCII tab/CR/LF from anywhere in the
+      //    string (browsers tolerate "java\tscript:..." as
+      //    "javascript:...").
       //
       // 2. Context escaping (fix round 1). The URL lands in two different
       //    contexts here — a double-quoted HTML attribute value (href, and
@@ -3623,7 +3632,7 @@
       //    passes cannot be merged or reordered.
       html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(match, label, url) {
         const allowedLinkSchemes = ['http:', 'https:', 'mailto:'];
-        const cleanedUrl = url.trim().replace(/[\t\r\n]/g, '');
+        const cleanedUrl = url.replace(/^[\x00-\x20]+|[\x00-\x20]+$/g, '').replace(/[\t\r\n]/g, '');
         const schemeMatch = /^([a-zA-Z][a-zA-Z0-9+.-]*:)/.exec(cleanedUrl);
         const scheme = schemeMatch ? schemeMatch[1].toLowerCase() : null;
         if (scheme !== null && allowedLinkSchemes.indexOf(scheme) === -1) {

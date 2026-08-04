@@ -170,6 +170,55 @@ describe('simpleMarkdown', () => {
     );
   });
 
+  describe('rejects javascript: for every C0-control-or-space byte (0x00-0x20) adjacent to the URL', () => {
+    // Fix round 3 (security). Round 2's extractUrlScheme used
+    // url.trim(), which only strips ECMA-262 whitespace/line-terminator
+    // characters (tab, LF, VT, FF, CR, space, plus some Unicode
+    // separators) — not the full C0-control range a real URL parser
+    // strips. A leading raw control byte outside that narrower set (e.g.
+    // \x01, \x08, \x1f) made extractUrlScheme return null (treated as "no
+    // scheme", the pass-through path meant for relative URLs), while
+    // Chromium/Electron's actual URL parser strips it and resolves the
+    // href's protocol to "javascript:" anyway — confirmed independently
+    // both via `new URL(...).protocol` and by reading a real anchor's
+    // `.protocol` in a DOM. Test the whole class, not a hand-picked few:
+    // every code point from 0x00 to 0x20 inclusive, both leading and
+    // trailing.
+    for (let code = 0x00; code <= 0x20; code++) {
+      const char = String.fromCharCode(code);
+      const hex = `0x${code.toString(16).padStart(2, '0')}`;
+
+      it(`rejects with control byte ${hex} leading the URL`, () => {
+        const html = simpleMarkdown(`[click me](${char}javascript:window.__pwned=1)`);
+        expect(html).toBe('click me');
+      });
+
+      it(`rejects with control byte ${hex} trailing the URL`, () => {
+        const html = simpleMarkdown(`[click me](javascript:window.__pwned=1${char})`);
+        expect(html).toBe('click me');
+      });
+    }
+  });
+
+  it('DOM cross-check: a leading C0 control byte really does resolve to javascript: in a real anchor, and simpleMarkdown never produces that anchor', () => {
+    // Fix round 3. Tests the property that actually matters — what a real
+    // DOM resolves the href to — rather than just the string this module
+    // produces. First reproduces the reviewer's own proof (a raw <a> given
+    // this href resolves its .protocol to "javascript:", exactly as
+    // Chromium/Electron would), then proves simpleMarkdown's fixed output
+    // never creates that anchor at all for the same input.
+    const payload = '\x01javascript:window.__pwned=1';
+
+    const proofAnchor = document.createElement('a');
+    proofAnchor.setAttribute('href', payload);
+    expect(proofAnchor.protocol).toBe('javascript:');
+
+    const html = simpleMarkdown(`[click me](${payload})`);
+    const container = document.createElement('div');
+    container.innerHTML = html;
+    expect(container.querySelector('a')).toBeNull();
+  });
+
   it('converts list items - item / * item to bullets', () => {
     expect(simpleMarkdown('- one')).toBe('&bull; one');
     expect(simpleMarkdown('* two')).toBe('&bull; two');

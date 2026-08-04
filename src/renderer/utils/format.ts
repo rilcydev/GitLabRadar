@@ -34,18 +34,39 @@ const ALLOWED_LINK_SCHEMES = new Set(['http:', 'https:', 'mailto:']);
 /**
  * Extracts a URL's scheme the way a browser's URL parser would, purely
  * for the allow-list check in the link rule below — this is not a
- * general-purpose URL parser. Trims leading/trailing ASCII whitespace and
- * strips ASCII tab/CR/LF from anywhere in the string first, because
- * browsers tolerate and silently remove those *within* a scheme before
- * parsing it (e.g. `java\tscript:...` parses identically to
- * `javascript:...`), so a naive prefix match on the raw string is not
- * safe. Returns the lowercased scheme including its trailing colon (e.g.
+ * general-purpose URL parser. Mirrors the WHATWG URL Standard's basic
+ * parser preprocessing, in the same two steps, because that parser is
+ * what actually resolves the rendered `href`:
+ *
+ * 1. Strip any *leading and trailing* C0 control (U+0000-U+001F) or space
+ *    (U+0020) — the full `\x00`-`\x20` range, not just
+ *    `String.prototype.trim()`'s ECMA-262 whitespace/line-terminator set.
+ *    `trim()` happens to catch tab/LF/VT/FF/CR/space, but leaves other C0
+ *    controls (e.g. `\x01`, `\x08`, `\x1f`) untouched at the string's
+ *    edges — and a leading one of those in front of `javascript:` is
+ *    exactly what a real URL parser (and hence Chromium/Electron) strips
+ *    before reading the scheme, while `trim()` alone does not, silently
+ *    misclassifying the URL as scheme-less and letting it through.
+ * 2. Separately, remove all ASCII tab/CR/LF from *anywhere* in the string
+ *    (not just the ends) — browsers tolerate and silently remove those
+ *    within a scheme before parsing it (e.g. `java\tscript:...` parses
+ *    identically to `javascript:...`), so a naive prefix match on the raw
+ *    string is not safe there either.
+ *
+ * Returns the lowercased scheme including its trailing colon (e.g.
  * `"https:"`), or `null` if the string has no scheme at all — a relative
  * or protocol-relative reference, which the allow-list does not touch
  * (see the link rule below for why that is safe).
  */
 function extractUrlScheme(url: string): string | null {
-  const cleaned = url.trim().replace(/[\t\r\n]/g, '');
+  // The \x00-\x20 range is the point of this regex (it is the exact C0
+  // control-or-space range a real URL parser strips before reading the
+  // scheme) — eslint-disable, not a narrower range, because narrowing it
+  // is exactly the mistake this fix exists to undo.
+  const cleaned = url
+    // eslint-disable-next-line no-control-regex
+    .replace(/^[\x00-\x20]+|[\x00-\x20]+$/g, '')
+    .replace(/[\t\r\n]/g, '');
   const match = /^([a-zA-Z][a-zA-Z0-9+.-]*:)/.exec(cleaned);
   return match ? match[1].toLowerCase() : null;
 }
