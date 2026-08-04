@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { AccountsPage } from '../../features/preferences/AccountsPage/AccountsPage';
+import { GeneralPage } from '../../features/preferences/GeneralPage/GeneralPage';
 import { ProjectsPage } from '../../features/preferences/ProjectsPage/ProjectsPage';
 import styles from './PreferencesApp.module.css';
 
@@ -41,20 +42,6 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
 ];
-
-// Page title/description copied verbatim from preferences.html:873-874
-// (General). Accounts got its real content in Task 8
-// (src/renderer/features/preferences/AccountsPage/AccountsPage.tsx), Projects
-// in Task 9 (src/renderer/features/preferences/ProjectsPage/ProjectsPage.tsx);
-// General remains a stub until Task 10.
-function GeneralPage() {
-  return (
-    <div className={styles.page}>
-      <h1 className={styles.pageTitle}>Settings</h1>
-      <p className={styles.pageDesc}>Customize GitLabBar&apos;s behavior according to your preferences.</p>
-    </div>
-  );
-}
 
 export function PreferencesApp() {
   const [page, setPage] = useState<Page>('accounts');

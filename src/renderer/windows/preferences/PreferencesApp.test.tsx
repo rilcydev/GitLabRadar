@@ -22,4 +22,11 @@ describe('PreferencesApp', () => {
     await userEvent.click(screen.getByText('Projects'));
     expect(screen.queryByRole('heading', { name: 'GitLab Accounts' })).not.toBeInTheDocument();
   });
+
+  it('mounts the real GeneralPage for page === "general" (not the Task 7 stub)', async () => {
+    renderWithApi(<PreferencesApp />);
+    await userEvent.click(screen.getByText('General'));
+    expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument();
+    expect(await screen.findByText('Launch at startup')).toBeInTheDocument();
+  });
 });
