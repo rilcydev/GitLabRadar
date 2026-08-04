@@ -97,3 +97,6 @@ out/
 
 # Internal docs
 prd.md
+
+# Vite renderer build output (added during the React migration)
+/dist
