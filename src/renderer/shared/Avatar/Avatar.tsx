@@ -26,18 +26,35 @@ export interface AvatarProps {
  * index.html:2782-2784 (item size, author avatar) and :2791-2796 /
  * :2806-2811 (mini size, assignee/reviewer stacks).
  *
- * Two behaviours are DELIBERATELY preserved as-is, not fixed:
+ * Three behaviours are DELIBERATELY preserved as-is, not fixed:
  *
  * 1. No `onerror` handler on the <img>. A broken/401 avatar URL renders as
  *    a broken image, not the initial-letter placeholder. This is bug #2 of
  *    the plan's preserved-bug list -- see Avatar.test.tsx for the test that
- *    documents it so a later change doesn't silently "fix" it.
- * 2. The placeholder initial defaults to '?' when the name is falsy
- *    (`(name || '?').charAt(0)`), mirroring index.html:2784's
+ *    documents it (fires a real `error` event and asserts the <img> is
+ *    still there with no placeholder) so a later change doesn't silently
+ *    "fix" it.
+ * 2. At item size, the placeholder initial defaults to '?' when the name
+ *    is falsy (`(name || '?').charAt(0)`), mirroring index.html:2784's
  *    `(mr.author?.name || '?')[0].toUpperCase()` exactly -- note this is a
  *    different fallback than the item-author-name text next to it, which
  *    uses 'Unknown' (index.html:2835). Do not unify the two; they are
  *    separate strings in the source.
+ * 3. At mini size, the placeholder initial has NO such guard -- it mirrors
+ *    index.html:2794/:2809's unguarded `a.name[0].toUpperCase()` exactly,
+ *    including the crash: an empty/undefined `name` throws
+ *    (`''[0]` is `undefined`, `undefined.toUpperCase()` throws). Fix round
+ *    1 confirmed this is reachable at runtime, not just a type-system
+ *    impossibility: `transformMergeRequest`
+ *    (src/main/api/gitlab.ts) only guards at the array level
+ *    (`assignees: mr.assignees || []`), and nothing in this repo validates
+ *    individual elements against the live GitLab response (no zod/io-ts/
+ *    ajv anywhere) -- `MergeRequestAuthor.name: string` is a compile-time
+ *    claim, not a runtime guarantee, for data coming off the same
+ *    self-hosted instance already known to return surprising 401s. Do NOT
+ *    add a `|| '?'` guard here to "fix" this -- see Avatar.test.tsx for the
+ *    test documenting the crash, which is bug scoped for the post-migration
+ *    lot, not this task.
  *
  * `title` is only ever set at mini size: index.html:2793 and :2808 put a
  * `title="${name}"` tooltip on both the <img> and placeholder <div> for
@@ -47,7 +64,6 @@ export interface AvatarProps {
 export function Avatar({ src, name, size }: AvatarProps) {
   const isMini = size === 'mini';
   const title = isMini ? name : undefined;
-  const initial = (name || '?').charAt(0).toUpperCase();
 
   if (src) {
     return (
@@ -59,6 +75,14 @@ export function Avatar({ src, name, size }: AvatarProps) {
       />
     );
   }
+
+  // See point 2/3 above: item size guards a missing name with '?'
+  // (index.html:2784); mini size does not (index.html:2794/:2809) and
+  // throws on an empty/undefined name exactly as the vanilla does. The
+  // non-null assertion on the mini branch is deliberate -- it is what lets
+  // `name![0]` reproduce the source's unguarded crash instead of silently
+  // tolerating it.
+  const initial = isMini ? name![0].toUpperCase() : (name || '?').charAt(0).toUpperCase();
 
   return (
     <div className={isMini ? styles.miniAvatarPlaceholder : styles.itemAvatarPlaceholder} title={title}>
