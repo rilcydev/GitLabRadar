@@ -1546,7 +1546,7 @@ One unchecked line per screen and interaction, grouped by window and tab, derive
 
 - [ ] **Step 2: Add the known-differences section**
 
-Copy the reconciled tokens from `token-reconciliation.md`. These are the **only** permitted visual differences. State plainly that the three known bugs are still present by design, and name them.
+Copy the reconciled tokens from `token-reconciliation.md`. These are the **only** permitted visual differences. State plainly that the **four** known bugs listed in Global Constraints are still present by design, and name each one with the file and line where it lives, so the human checking parity on macOS knows which misbehaviours to expect rather than report.
 
 - [ ] **Step 3: Mark the verification owner**
 
