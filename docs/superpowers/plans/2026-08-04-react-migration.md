@@ -17,6 +17,7 @@
   2. missing `onerror` fallback — a broken image stays broken instead of showing initials
   3. truncated project tree in watched projects and search
   4. `validateToken`'s gate is dead code (`preferences.html:1080-1084`): it tests the truthiness of an always-truthy object, so an invalid token adds the account anyway
+  5. project search has an out-of-order-response race (`preferences.html:1153-1180`): no request generation or abort guard, so a slow earlier search that resolves after a faster later one silently overwrites the fresher results
   Where a task's test would otherwise assert the *corrected* behaviour, the test is inverted to document the bug instead. Never "fix" one of those tests.
 - **UI copy is English and must be reproduced verbatim.** "Watched projects", "Search for a project...", "Add account", "No projects found", "Error during search", "Searching...". Never translate, never reword.
 - **No component may reference `window.gitlabbar`.** Access is via `useApi()`. A grep for `window.gitlabbar` outside `src/preload.ts` and `src/renderer/api/` must return nothing.
@@ -1145,7 +1146,26 @@ in the source but can never be displayed, which is precisely what this test pins
 
 **Source to port:** markup `preferences.html:853-871`, script `preferences.html:1150-1290`.
 
-Behaviour to reproduce exactly: 300 ms debounce on the search input, `Searching...` while in flight, `No projects found` on empty results, `Error during search` on rejection, checkbox toggle writing both `watchedProjectIds` and `watchedProjectsData`, and the watched-project chips with their remove button.
+Behaviour to reproduce exactly, read from `preferences.html:1153-1180` rather than from
+this paraphrase — an earlier draft of this section was wrong twice:
+
+- `clearTimeout` fires first on every input event, restarting the debounce per keystroke.
+- **Under 2 trimmed characters**, the list shows `Type at least 2 characters...` and
+  **no timer is scheduled at all**. This branch was missing from an earlier draft.
+- `Searching...` is set **synchronously in the input handler, before `setTimeout` is even
+  called** — it is a *typing* indicator, not an in-flight indicator. An earlier draft said
+  "while in flight", which would delay it by 300 ms and change perceived latency. Assert
+  its presence **before** advancing timers, or the test cannot tell the two apart.
+- 300 ms debounce, then the search dispatches.
+- `No projects found` on empty results, `Error during search` on rejection.
+- Checkbox toggle writes **both** `watchedProjectIds` and `watchedProjectsData`, as two
+  separate `config.set` calls.
+- Watched-project chips with their remove button.
+
+Timer tests: use `typeWithFakeTimers` from `src/test/`. The obvious pattern —
+`vi.useFakeTimers()` plus `userEvent.type(..., { advanceTimers })` — hangs indefinitely,
+and the `shouldAdvanceTime: true` workaround leaks wall-clock time into the virtual clock,
+failing the 299 ms boundary assertion 7 runs out of 8.
 
 **Parity trap:** chips show `project.name` only, and search results show `project.name` on line 1 with `path_with_namespace` on line 2. Reproduce that. Showing the full tree is a scoped feature for the follow-up lot — not this task.
 
