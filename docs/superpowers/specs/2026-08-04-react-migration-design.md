@@ -99,12 +99,13 @@ Fenêtre menubar (`src/renderer/index.html`, 3924 lignes) :
 - `features/untag/`
 - `shared/` — `Avatar`, `ItemCard`, `SectionHeader`, `Filters`, `EmptyState`
 
-Fenêtre préférences (`src/renderer/preferences.html`, 1296 lignes) :
+Fenêtre préférences (`src/renderer/preferences.html`, 1296 lignes) — trois pages,
+pas quatre : les réglages de notification sont dans la page General et non dans
+un onglet dédié, contrairement à ce que laisse croire le squelette React mort.
 
-- `features/preferences/AccountsTab`
-- `features/preferences/ProjectsTab`
-- `features/preferences/NotificationsTab`
-- `features/preferences/GeneralTab`
+- `features/preferences/AccountsPage`
+- `features/preferences/ProjectsPage`
+- `features/preferences/GeneralPage` — inclut les notifications
 
 Les fichiers `.tsx` existants servent de matériau de référence. Ils n'ont jamais
 été exécutés : rien ne garantit leur correction, ils ne sont jamais repris tels
