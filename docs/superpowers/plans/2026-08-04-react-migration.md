@@ -1344,7 +1344,14 @@ Before writing assertions, read `index.html:3624-3667` and derive the expected v
   - `<MenubarApp />` rendering header, the four tabs with their badge counts, and the active tab's content
   - `useViewMode(): 'developer' | 'productOwner'`
 
-**Source to port:** tab markup `index.html:2209-2323`, header and view mode `index.html:2374-2442`, data loading `index.html:3776-3921`.
+**Source to port:** tab markup `index.html:2209-2323`, header and view mode `index.html:2374-2442`, data loading — `loadData()` is at `index.html:3845-3883` (an earlier draft cited `:3795`, which is inside the untag click handler, not `loadData`).
+
+**All five panes stay mounted.** `index.html:376-383` is `.tab-content{display:none}` /
+`.tab-content.active{display:block}` — the four tabs and `po-content` are permanent DOM
+siblings and only the `active` class moves. `loadData()` at `:3854-3856` recomputes every
+tab's content on every data event regardless of which tab is showing. Tasks 15-18 must
+therefore expect their panes to mount on first render and their effects to run on every
+`data:updated`, not lazily on tab selection. This is the source's own behaviour.
 
 Tabs, with verbatim labels and badge element ids from the source: `mrs` (`#mrCount`), `pipelines` (`#pipelineCount`), `releases` (`#releaseCount`), `untag` (`#untagCount`). The `po-content` pane (`index.html:2291`) is not a tab — it is the product-owner view mode, handled in Task 17.
 
@@ -1494,6 +1501,27 @@ If this task proves too large in practice, split it at the file boundary — `Re
 - [ ] **Step 3: Implement `ReleasesTab`**
 - [ ] **Step 4: Implement `POView`**
 - [ ] **Step 5: Wire view-mode switching in `MenubarApp`** — `developer` shows the four tabs, `productOwner` shows `POView`, matching `applyViewMode` at `index.html:3299`
+
+  **This step absorbs three things Task 13 could not build**, because `useData()` and
+  `useViewMode()` as originally specified could not express them. No other task claims them.
+
+  a. **Give `useViewMode()` a setter.** `setViewMode(mode): Promise<void>`, mirroring
+     `index.html:2383-2396`: no-op if unchanged, persist via `config.set('viewMode', mode)`,
+     then refresh the profile nav and re-apply the view.
+  b. **Build the profile-nav toggle** — the Developer / Product Owner buttons at
+     `index.html:2204-2208`. `applyViewMode` (`:3299-3320`) gates their visibility on
+     `hasAccounts`, which comes from `checkAccounts()` (`:3914-3922`, `accounts.getAll()`).
+     Nothing in the React port produces `hasAccounts` yet — you must add it.
+  c. **Build the footer** — markup at `index.html:2313-2321`, behaviour in `updateStatus()`
+     at `:3826-3832`. It needs only `Data.error`, which `DataProvider` already exposes.
+
+  **Do not switch modes with a JSX conditional.** Task 13 left
+  `{viewMode === 'developer' && <>tabs + panes</>}` in `MenubarApp`, which is inert while
+  nothing can flip the mode — but the moment your setter lands, toggling would **unmount and
+  remount** the four developer panes. Vanilla never does that: all five panes are permanent
+  siblings and `applyViewMode` only moves classes. Restructure to class-only visibility, or
+  every view-mode toggle destroys Tasks 15-18's per-tab state — scroll position, expanded
+  rows, in-flight requests.
 - [ ] **Step 6: Run tests** — PASS
 - [ ] **Step 7: Commit** — `git commit -m "feat: port releases tab and product-owner view to React"`
 
