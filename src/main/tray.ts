@@ -17,9 +17,38 @@ const ICONS_PATH = app.isPackaged
   ? path.join(process.resourcesPath, 'assets/icons')
   : path.join(app.getAppPath(), 'assets/icons');
 
+// Legacy static-HTML renderer root. Still used by the menubar window only
+// (Task 19 migrates it and retires this): src/renderer/index.html is plain
+// HTML/JS, not bundled, so it can be loaded straight from source in dev and
+// from a flat copied directory when packaged.
 const RENDERER_PATH = app.isPackaged
   ? path.join(process.resourcesPath, 'renderer')
   : path.join(app.getAppPath(), 'src/renderer');
+
+// Root of the Vite-built React renderer bundle (see vite.renderer.config.ts,
+// which sets `base: './'`). Because of that relative base, every emitted
+// entry HTML file resolves its <script>/<link> tags relative to its OWN
+// directory, several levels up from the build root, e.g.:
+//   <root>/src/renderer/windows/preferences/index.html -> ../../../../assets/…
+// `dist/` must therefore be treated as one atomic unit: copy the whole
+// tree, keep the nested `src/renderer/windows/<name>/index.html` path when
+// resolving an entry, and never flatten or cherry-pick just the HTML file.
+// Doing so breaks asset resolution with NO error and NO console output --
+// just a blank window -- so this is the one part of tray.ts that must not
+// be "simplified".
+//
+// In dev, this points at the project's own `dist/` (produced by running
+// `npx vite build --config vite.renderer.config.ts`; nothing currently
+// triggers that build automatically as part of `npm start`). In a packaged
+// app, it points at the `dist/` folder copied in by forge.config.ts's
+// `extraResource`.
+const BUILT_RENDERER_ROOT = app.isPackaged
+  ? path.join(process.resourcesPath, 'dist')
+  : path.join(app.getAppPath(), 'dist');
+
+function getBuiltRendererEntry(windowName: 'menubar' | 'preferences'): string {
+  return path.join(BUILT_RENDERER_ROOT, 'src', 'renderer', 'windows', windowName, 'index.html');
+}
 
 // Store for window size
 const windowStore = new Store<{ menuWindowSize: { width: number; height: number } }>({
@@ -252,7 +281,7 @@ class TrayManager {
       },
     });
 
-    const prefsPath = path.join(RENDERER_PATH, 'preferences.html');
+    const prefsPath = getBuiltRendererEntry('preferences');
     console.log('Loading preferences from:', prefsPath);
     this.preferencesWindow.loadFile(prefsPath);
 
