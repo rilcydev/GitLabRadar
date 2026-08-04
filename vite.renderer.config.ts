@@ -28,6 +28,16 @@ export default defineConfig(async () => {
   return {
     plugins: [react()],
     resolve: { alias: { '@': '/src' } },
+    // The two entries here are loaded via BrowserWindow.loadFile() from
+    // `file://`, not served from a web root, so Vite's default `base: '/'`
+    // (absolute asset paths) resolves from the filesystem root and produces
+    // a blank window with no console output. `base: './'` makes every
+    // emitted <script>/<link> path relative to the HTML file's own
+    // directory instead. Vite special-cases this: `base: './'` is forced
+    // back to `/` during dev serve and only takes effect for `vite build`,
+    // so `electron-forge start` (dev server) is unaffected -- see
+    // https://vite.dev/config/shared-options.html#base.
+    base: './',
     build: {
       rollupOptions: {
         input: {
