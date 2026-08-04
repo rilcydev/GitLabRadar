@@ -18,6 +18,8 @@
   3. truncated project tree in watched projects and search
   4. `validateToken`'s gate is dead code (`preferences.html:1080-1084`): it tests the truthiness of an always-truthy object, so an invalid token adds the account anyway
   5. project search has an out-of-order-response race (`preferences.html:1153-1180`): no request generation or abort guard, so a slow earlier search that resolves after a faster later one silently overwrites the fresher results
+  6. the two notification checkboxes are **dead** (`preferences.html:956,967`): they have no listener, no config read and no config write anywhere in the repo, yet the main process honours `notifications.newMRAssigned` and `notifications.pipelineFailed` (`src/main/services/notifications.ts:15,78`). The settings are therefore pinned to `DEFAULT_CONFIG` forever and the UI cannot change them
+  7. `failedPipelineMaxAge || 24` (`preferences.html:1112`) treats a stored `0` — the legitimate "Never hide" choice — as falsy and reverts the display to 24 on every reload
   Where a task's test would otherwise assert the *corrected* behaviour, the test is inverted to document the bug instead. Never "fix" one of those tests.
 - **UI copy is English and must be reproduced verbatim.** "Watched projects", "Search for a project...", "Add account", "No projects found", "Error during search", "Searching...". Never translate, never reword.
 - **No component may reference `window.gitlabbar`.** Access is via `useApi()`. A grep for `window.gitlabbar` outside `src/preload.ts` and `src/renderer/api/` must return nothing.
