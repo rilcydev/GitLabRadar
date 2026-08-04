@@ -90,7 +90,10 @@ Line ranges an implementer must port from. These are the specification for the f
 ## Task 1: Test harness
 
 **Files:**
-- Create: `vitest.config.ts`
+- Create: `vitest.config.mts` — the `.mts` extension is required, not cosmetic. The root
+  `package.json` has no `"type": "module"`, so with a `.ts` name Vite's config loader
+  `require()`s the ESM-only `@vitejs/plugin-react` and the run fails outright. Adding
+  `"type": "module"` instead would break `scripts/generate-icons.js`, which uses `require()`.
 - Create: `src/test/setup.ts`
 - Create: `src/test/harness.test.ts`
 - Modify: `package.json`
@@ -107,7 +110,7 @@ npm install --save-dev vitest@^3 @vitejs/plugin-react@^5 @testing-library/react@
 
 - [ ] **Step 2: Write the config**
 
-`vitest.config.ts`:
+`vitest.config.mts`:
 
 ```ts
 import { defineConfig } from 'vitest/config';
@@ -177,7 +180,7 @@ Expected: exit 0. If pre-existing errors appear in untouched files, record them 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add vitest.config.ts src/test package.json package-lock.json
+git add vitest.config.mts src/test package.json package-lock.json tsconfig.json
 git commit -m "test: add vitest + testing-library harness"
 ```
 
