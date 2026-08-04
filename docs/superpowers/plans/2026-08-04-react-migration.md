@@ -20,6 +20,7 @@
   5. project search has an out-of-order-response race (`preferences.html:1153-1180`): no request generation or abort guard, so a slow earlier search that resolves after a faster later one silently overwrites the fresher results
   6. the two notification checkboxes are **dead** (`preferences.html:956,967`): they have no listener, no config read and no config write anywhere in the repo, yet the main process honours `notifications.newMRAssigned` and `notifications.pipelineFailed` (`src/main/services/notifications.ts:15,78`). The settings are therefore pinned to `DEFAULT_CONFIG` forever and the UI cannot change them
   7. `failedPipelineMaxAge || 24` (`preferences.html:1112`) treats a stored `0` — the legitimate "Never hide" choice — as falsy and reverts the display to 24 on every reload
+  8. the mini avatar placeholder (`index.html:2791-2795`) does `name[0].toUpperCase()` with no fallback, unlike the item placeholder at `:2782-2784`. An empty name throws, and because it runs inside a `.map()` in a template literal it aborts the **entire** merge-request list render. Nothing validates that field at runtime — `transformMergeRequest` in `src/main/api/gitlab.ts` applies an array-level `|| []` only, and the element types are a compile-time assertion over unvalidated GitLab JSON
   Where a task's test would otherwise assert the *corrected* behaviour, the test is inverted to document the bug instead. Never "fix" one of those tests.
 - **UI copy is English and must be reproduced verbatim.** "Watched projects", "Search for a project...", "Add account", "No projects found", "Error during search", "Searching...". Never translate, never reword.
 - **No component may reference `window.gitlabbar`.** Access is via `useApi()`. A grep for `window.gitlabbar` outside `src/preload.ts` and `src/renderer/api/` must return nothing.
@@ -1416,13 +1417,31 @@ it('falls back to the initial when no url is given', () => {
   expect(screen.getByText('C')).toBeInTheDocument();
 });
 
-it('does not install an error handler (parity: broken images stay broken)', () => {
+it('leaves a broken image broken (parity: no fallback on load failure)', () => {
   render(<Avatar src="https://example.com/a.png" name="Cyril" size="item" />);
-  expect(screen.getByRole('img')).not.toHaveAttribute('onerror');
+  const img = screen.getByRole('img');
+  fireEvent.error(img);
+  expect(img).toBeInTheDocument();
+  expect(screen.queryByText('C')).not.toBeInTheDocument();
 });
 ```
 
-The third test looks perverse. It is deliberate: it documents that the missing fallback is known and intentional for this phase, so a later agent does not "helpfully" add one and silently break parity.
+The third test looks perverse. It is deliberate: it documents that the missing fallback is
+known and intentional for this phase, so a later agent does not "helpfully" add one and
+silently break parity.
+
+**An earlier draft of this test was inert and must not be restored.** It asserted
+`expect(img).not.toHaveAttribute('onerror')`. React never serialises an `onError` prop to
+that HTML attribute — it routes through the synthetic event system — so the assertion is
+vacuously true whether or not a handler exists. A reviewer proved it by implementing the
+exact regression the test exists to prevent, a `useState` plus `onError` plus a conditional
+placeholder render, and all eight tests still passed. Fire the event and assert the
+observable outcome; never assert the shape of the markup you happened to write.
+
+**`size="mini"` must NOT have the `(name || '?')` fallback.** The item path has it
+(`index.html:2782-2784`); the mini path does not (`:2791-2795`), so `name[0].toUpperCase()`
+on an empty name throws — and because it runs inside a `.map()` in a template literal, it
+aborts the whole list render. That is preserved-bug behaviour, not something to unify.
 
 - [ ] **Step 2: Run to confirm failure** — `npm run test:run -- Avatar`
 - [ ] **Step 3: Implement the four components with their CSS Modules**
