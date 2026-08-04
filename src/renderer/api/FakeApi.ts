@@ -3,8 +3,9 @@ import type {
   PolledData,
   RefreshStatus,
   Unsubscribe,
+  UntagPollingResult,
 } from '@/shared/api/contract';
-import type { AppConfig, UntagProject } from '@/shared/types';
+import type { AppConfig } from '@/shared/types';
 // Value import (unlike the `import type`s above): eslint's import/no-unresolved
 // can't follow the `@/*` alias for runtime imports (no TS-aware resolver is
 // configured -- see src/test/harness.test.ts's identical pre-existing gap),
@@ -27,7 +28,7 @@ export interface FakeEmitter {
   dataUpdated(data: PolledData): void;
   refreshStatus(status: RefreshStatus): void;
   error(message: string): void;
-  untagDataUpdated(data: UntagProject[]): void;
+  untagDataUpdated(data: UntagPollingResult): void;
 }
 
 // A minimal synchronous pub/sub used to back each of the 4 pushed events.
@@ -61,7 +62,7 @@ export function createFakeApi(overrides: FakeApiOverrides = {}): {
   const dataUpdatedBus = createEventBus<PolledData>();
   const refreshStatusBus = createEventBus<RefreshStatus>();
   const errorBus = createEventBus<string>();
-  const untagDataUpdatedBus = createEventBus<UntagProject[]>();
+  const untagDataUpdatedBus = createEventBus<UntagPollingResult>();
 
   const accounts: GitLabBarApi['accounts'] = {
     getAll: async () => [],
@@ -112,7 +113,7 @@ export function createFakeApi(overrides: FakeApiOverrides = {}): {
     dismissRelease: async () => {},
     restoreReleases: async () => {},
     getPOReleases: async () => [],
-    getUntagProjects: async () => [],
+    getUntagProjects: async () => ({ untagProjects: [], excludedCount: 0, lastUpdated: new Date() }),
     refreshUntag: async () => {},
     clearUntagExclusions: async () => {},
     ...overrides.gitlab,

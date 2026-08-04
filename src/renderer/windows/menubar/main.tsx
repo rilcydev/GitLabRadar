@@ -1,8 +1,29 @@
 import { createRoot } from 'react-dom/client';
+import { createElectronApi, type IpcLike } from '../../../shared/api/createElectronApi';
+import { ApiProvider } from '../../api/ApiContext';
+import { DataProvider } from './DataProvider';
+import { MenubarApp } from './MenubarApp';
+import '../../styles/tokens.css';
 
-// Placeholder entry so the two-entry Vite build (menubar + preferences)
-// resolves. Task 13 replaces this with the real menubar React app.
 const container = document.getElementById('root');
 if (!container) throw new Error('#root not found');
 
-createRoot(container).render(<>Menubar placeholder</>);
+// window.gitlabbar is exposed by the preload's contextBridge and should
+// always be present -- see src/preload.ts and src/global.d.ts. The
+// `window.require('electron')` fallback below is not a supported path; it
+// exists only so a misconfigured preload fails loudly (a thrown
+// "window.require is not a function") instead of silently rendering with
+// no API at all. Mirrors src/renderer/windows/preferences/main.tsx.
+type ElectronRequire = (id: 'electron') => { ipcRenderer: IpcLike };
+
+const api =
+  window.gitlabbar ??
+  createElectronApi((window as unknown as { require: ElectronRequire }).require('electron').ipcRenderer);
+
+createRoot(container).render(
+  <ApiProvider api={api}>
+    <DataProvider>
+      <MenubarApp />
+    </DataProvider>
+  </ApiProvider>
+);

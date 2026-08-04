@@ -91,6 +91,34 @@ export interface PolledData {
   error?: string;
 }
 
+// Mirrors src/main/services/untagPolling.ts's `UntagPollingData`. Not
+// imported: that file is main-process code and must not be pulled into the
+// shared/renderer graph (same reasoning as `TrayStatus` above).
+//
+// Found while implementing Task 13 (menubar DataProvider): both
+// `gitlab.getUntagProjects()` and `on.untagDataUpdated` were typed here as
+// resolving/pushing a bare `UntagProject[]`, copied from the brief without
+// checking the real handler. In reality:
+//   - src/main/ipc/handlers.ts's GITLAB_GET_UNTAG_PROJECTS handler returns
+//     `untagPollingService.getData()`, which resolves `UntagPollingData`.
+//   - src/main/services/untagPolling.ts:158 pushes that same
+//     `UntagPollingData` shape (not just the array) on the
+//     `untag:dataUpdated` channel.
+//   - src/renderer/index.html:3863-3865 and :3905-3908 both read
+//     `data.untagProjects` / `data.excludedCount` off the resolved/pushed
+//     value, which only works if the value is the wrapper object, not a bare
+//     array (`[].untagProjects` is `undefined`).
+// A component written against the OLD (wrong) type signature would compile
+// but silently read `undefined` at runtime against the real Electron main
+// process -- the exact class of bug the PolledData.lastUpdated Date/string
+// note above already warns about, just on a different field. See
+// task-13-report.md for the full evidence chain.
+export interface UntagPollingResult {
+  untagProjects: UntagProject[];
+  excludedCount: number;
+  lastUpdated: Date;
+}
+
 export interface GitLabBarApi {
   accounts: {
     getAll(): Promise<GitLabAccount[]>;
@@ -117,7 +145,7 @@ export interface GitLabBarApi {
     dismissRelease(releaseId: number): Promise<void>;
     restoreReleases(): Promise<void>;
     getPOReleases(projectId: number, page: number, perPage: number): Promise<Release[]>;
-    getUntagProjects(): Promise<UntagProject[]>;
+    getUntagProjects(): Promise<UntagPollingResult>;
     refreshUntag(): Promise<void>;
     clearUntagExclusions(): Promise<void>;
   };
@@ -136,7 +164,7 @@ export interface GitLabBarApi {
     dataUpdated(cb: (data: PolledData) => void): Unsubscribe;
     refreshStatus(cb: (status: RefreshStatus) => void): Unsubscribe;
     error(cb: (message: string) => void): Unsubscribe;
-    untagDataUpdated(cb: (data: UntagProject[]) => void): Unsubscribe;
+    untagDataUpdated(cb: (data: UntagPollingResult) => void): Unsubscribe;
   };
 }
 
