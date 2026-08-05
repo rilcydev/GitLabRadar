@@ -62,7 +62,7 @@
     "@types/react": "^19.2.10",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.5",
-    "electron": "40.1.0",
+    "electron": "43.2.0",
     "jsdom": "^30.0.1",
     "oxfmt": "^0.62.0",
     "oxlint": "^1.77.0",
