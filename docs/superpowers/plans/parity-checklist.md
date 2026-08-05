@@ -75,12 +75,15 @@ not a bug you introduced by reading this checklist — it was already there,
 or it was an explicitly authorized change. Do not file it. Everything
 **not** listed here that looks wrong **is** worth reporting.
 
-### 2.1 Eight preserved bugs
+### 2.1 Seven preserved bugs
 
 The migration's standing rule was **strict parity**: no bug fixes, no
-behaviour changes. These eight misbehaviours were confirmed present in the
+behaviour changes. These seven misbehaviours were confirmed present in the
 original app and were ported on purpose, to be fixed together later in a
-separate, dedicated lot. Expect all eight in the React app, unchanged.
+separate, dedicated lot. Expect all seven in the React app, unchanged.
+(There is an eighth, related bug — the empty-name crash — but its
+**blast radius** is not parity; it's worse in React. See 2.1a immediately
+below, not this table.)
 
 | # | Name | What you'll actually see | Lives in (React) | Lived in (original) |
 |---|---|---|---|---|
@@ -91,27 +94,72 @@ separate, dedicated lot. Expect all eight in the React app, unchanged.
 | 5 | Project search race | Preferences → Projects: type a query, then immediately overwrite it before the first search resolves. If the slower, earlier search's response happens to land after the faster, later one, the **stale** results are what's shown, with no indication anything is wrong. Hard to trigger reliably by hand; typing fast while your network is inconsistent is the realistic way to hit it. | `ProjectsPage.tsx` (`performSearch`/`handleSearchChange`, lines ~71-120 — no request-generation counter, no abort) | `preferences.html:1153-1180` |
 | 6 | Notification checkboxes do nothing | Preferences → General → Notifications: "New assigned MRs" and "Failed pipelines" toggles can be clicked and will visually flip, but they are not wired to anything — no config is read on load, none is written on change. The main process's actual notification behaviour (`notifications.newMRAssigned`/`pipelineFailed`) is permanently pinned to its default and this UI cannot change it either way. | `GeneralPage.tsx:226-244` | `preferences.html:956`, `:967` |
 | 7 | "Never hide" pipeline setting reverts to 24h on reload | Preferences → General → "Hide failed pipelines after": pick **Never hide** (stored as `0`), quit and relaunch. The dropdown will show **24 hours** again — the stored `0` is falsy, so `config.failedPipelineMaxAge \|\| 24` silently substitutes the default. (The actual stored value is unaffected by this — it's a *display* bug on reload, not a data-loss bug — but you have no way to tell that from the UI.) | `GeneralPage.tsx:37`, `:51` | `preferences.html:1112` |
-| 8 | Empty assignee/reviewer name can crash the pane | If any GitLab user record reaching this app (assignee, reviewer, or comment author on a merge request) has an empty/blank name — which can happen on data from an instance already known to misbehave — rendering that mini-avatar throws. **Because no error boundary wraps any pane in this app, that crash is not contained to the Merge Requests tab: it unmounts the whole React tree, blanking the entire menubar window until you close and reopen it.** This was confirmed directly by the review process (see the note under "Worth flagging" below) — it is not a guess. Very unlikely to happen day-to-day; only worth knowing so you don't spend time debugging a "randomly blank menubar" as if it were a new regression. | `Avatar.tsx:85` (`name![0].toUpperCase()`, no guard, mini size only) | `index.html:2791-2795` |
+
+### 2.1a Bug #8 — empty assignee/reviewer name: a known divergence in blast radius, NOT parity
+
+This one does not belong in the table above, on purpose: the *trigger* is
+parity (an empty/blank name on a GitLab user record — assignee, reviewer,
+or comment author on a merge request — reaching `name![0].toUpperCase()`
+with no guard, same as the original), but the *consequence* is not.
+
+- **Vanilla**: the throw happened inside `renderMRs()`
+  (`index.html:2791-2795`) and was contained there — it aborted only that
+  one render function, so the header, tabs, and the other three lists
+  (Pipelines, Releases, Untag) kept working. You'd see a broken Merge
+  Requests tab, nothing else.
+- **React** (`Avatar.tsx:85`, mini size only): **there is no error
+  boundary anywhere in this app's real component tree** —
+  `componentDidCatch`/`getDerivedStateFromError` exist only inside a
+  test-local probe (`MergeRequestsTab.test.tsx`'s `CrashProbe`), never in
+  shipped code. An uncaught render throw here unmounts the *entire* React
+  tree, blanking the whole menubar window — header, tabs, footer, all four
+  lists — until you close and reopen it. Confirmed directly by the review
+  process (see "Worth flagging" below), not a guess.
+
+**This is a known, deliberate divergence from vanilla's blast radius, not
+preserved parity — and it is left for you to decide, not fixed here.** Do
+not read the rest of this document as license to add an error boundary;
+that decision belongs to you. Very unlikely to happen day-to-day; worth
+knowing so you don't debug a "randomly blank menubar" as if it were a new
+regression from this migration.
 
 ### 2.2 The one sanctioned behaviour change: markdown link scheme filtering
 
 During the port (Task 12), a real, exploitable script-injection hole was
-found in the original app's markdown renderer (merge-request descriptions
-and comment bodies) and fixed **in both the vanilla file and the React
-port, at the same time**, with the human's explicit sign-off. This is the
-**only** intentional behaviour change in the whole migration.
+found in the original app's `simpleMarkdown` renderer and fixed **in both
+the vanilla file and the React port, at the same time**, with the human's
+explicit sign-off. This is the **only** intentional behaviour change in
+the whole migration.
+
+**Where you'll actually see it:** `simpleMarkdown` has exactly one call
+site in the shipped React app —
+`src/renderer/features/releases/POReleaseRow.tsx`'s `release.description`
+rendering, i.e. a **release's description text, in the Product Owner
+view** (profile nav → Product Owner; expand a release's "Show more").
+Nowhere else in the React app routes text through `simpleMarkdown`: merge
+requests never render a description field at all, and MR comment/note
+bodies (`MergeRequestsTab.tsx`'s `NotesPanel`) deliberately use a
+*narrower*, separate transform — backtick-code and newline-to-`<br>`
+only, no link parsing, no `simpleMarkdown` call — so this scheme filter
+cannot apply there regardless. (This differs from vanilla, where
+`simpleMarkdown` *did* run over MR descriptions and note bodies too, which
+is where Task 12 originally found and fixed the hole — but that is not
+the surface you're verifying here; the React port's own reachable surface
+is narrower.)
 
 **What changed, in terms you'll actually notice:** a `[text](url)` markdown
-link only renders as a clickable link if its URL's scheme is `http:`,
-`https:`, or `mailto:`. Any other scheme — including `ftp:` and app-custom
-schemes like `vscode://...` or `slack://...` — now renders as **plain,
-unlinked text** instead of a link. There is no visual marker that a link
-was suppressed; it just looks like plain text where a link used to be.
-Relative/protocol-relative links (no scheme at all) are unaffected.
+link in a release description only renders as a clickable link if its
+URL's scheme is `http:`, `https:`, or `mailto:`. Any other scheme —
+including `ftp:` and app-custom schemes like `vscode://...` or
+`slack://...` — now renders as **plain, unlinked text** instead of a
+link. There is no visual marker that a link was suppressed; it just looks
+like plain text where a link used to be. Relative/protocol-relative links
+(no scheme at all) are unaffected.
 
-If you see a merge-request description or comment where a link you'd
-expect to be clickable (e.g. a `vscode://` deep link someone pasted) is
-just plain text — that's this, working as intended, not a bug.
+If you see a release description in the Product Owner view where a link
+you'd expect to be clickable (e.g. a `vscode://` deep link someone pasted
+into the description) is just plain text — that's this, working as
+intended, not a bug.
 
 Implementation: `src/renderer/utils/format.ts` (`ALLOWED_LINK_SCHEMES`,
 around lines 32 and 96-135).
@@ -155,12 +203,15 @@ shadow, or gradient is not on this list and is worth reporting.
 
 ## 4. Worth flagging, not a checklist item
 
-Bug #8's blast radius (whole-window crash, not just the affected pane) is
-a structural consequence of this app having no error boundary anywhere in
-its real component tree — confirmed by a reviewer during Task 15 who
-observed "the tree unmounts" when reproducing the crash outside a test's
-purpose-built `CrashProbe` boundary. This is worth being aware of; it is
-not something to fix as part of checking this list.
+Bug #8's blast radius (whole-window crash, not just the affected pane —
+see 2.1a) is a structural consequence of this app having no error boundary
+anywhere in its real component tree — confirmed by a reviewer during Task
+15 who observed "the tree unmounts" when reproducing the crash outside a
+test's purpose-built `CrashProbe` boundary. This is a **known divergence
+from vanilla's blast radius, not parity**: vanilla's equivalent crash was
+contained to `renderMRs()`; React's isn't contained to anything. It is
+**deliberately left as-is, for you to decide** — not something to fix as
+part of checking this list, and not license to add an error boundary.
 
 ---
 
@@ -237,7 +288,7 @@ not something to fix as part of checking this list.
 - [ ] Empty state: title/message differ depending on whether you have any watched projects configured at all ("No projects configured" vs. "No releases yet"), with a matching "Configure projects" / "Manage projects" button.
 - [ ] A project filter dropdown ("All projects" + one entry per project, alphabetically sorted) narrows the list when changed.
 - [ ] Each project section shows a header (icon, project path, release count) and its releases underneath, same per-release layout as the Releases tab's deployment rows **except: no status word next to a deployment's icon here** — icon, environment, and time only. (The Releases tab shows the status word; this view deliberately doesn't — a real, pre-existing difference between the two views, not a porting bug.)
-- [ ] A release with a non-empty description shows a "Show more"/"Show less" toggle; expanding it renders the description through the same constrained markdown as MR/release descriptions elsewhere (bold, italic, headers, inline code, lists, links) — this is where you're most likely to notice the sanctioned link-scheme change from section 2.2, if a description contains a link with an unusual scheme.
+- [ ] A release with a non-empty description shows a "Show more"/"Show less" toggle; expanding it renders the description through `simpleMarkdown`'s constrained subset (bold, italic, headers, inline code, lists, links) — this is the **only** place in the whole app any description is rendered this way (the Releases tab shows no description at all), and so the place to look for the sanctioned link-scheme change from section 2.2, if a description contains a link with an unusual scheme.
 - [ ] "Load more releases" button fetches and appends 5 more releases for that project; disappears once a fetch returns fewer than 5 (exhausted); shows "Loading..." while in flight.
 - [ ] A page counter for "Load more" is not reset by a background data refresh, even though the extra releases visually are — so after loading a few extra pages, an unrelated refresh, then clicking "Load more" again can silently skip ahead. This was deliberately reproduced (see the ledger, Task 17) — do not report it.
 
