@@ -233,7 +233,12 @@ export function PipelineRow({ pipeline, onOpen, onDismiss, onOpenJob }: Pipeline
                       title={job.name}
                       onClick={(e) => {
                         stopClick(e);
-                        onOpenJob(job.webUrl);
+                        // index.html:3061-3063 -- `if (url && ...)`. `PipelineJob.webUrl`
+                        // is typed non-optional, but that's a compile-time claim, not a
+                        // runtime guarantee (see Avatar.tsx's doc comment for the same
+                        // reasoning applied elsewhere in this codebase) -- guard literally
+                        // rather than trust the type.
+                        if (job.webUrl) onOpenJob(job.webUrl);
                       }}
                     >
                       <span className={styles.jobStatusDot} />

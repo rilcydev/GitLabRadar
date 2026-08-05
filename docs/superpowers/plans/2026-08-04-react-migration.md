@@ -1486,7 +1486,18 @@ Behaviour: grouping into sections by role (the `renderSection` calls in `renderM
 
 **Source to port:** `index.html:2885-3112`.
 
-`getJobIcon` (`index.html:3096-3112`) returns markup per job status — port it to a component returning JSX, keeping the exact status→icon mapping.
+**Do NOT port `getJobIcon`.** An earlier draft of this plan instructed porting it with a
+test per status branch. It is **dead code** in the source: `grep -n getJobIcon
+src/renderer/index.html` returns exactly one line, its own declaration at `:3096`. Nothing
+calls it, no `.job-icon` CSS rule exists, and the real job chips at `:2970-2976` use
+`.job-status-dot` plus a manual-only glyph. Releases have their own separate
+`deploymentIcons` map (`:3195-3201`) with a different status vocabulary, so no later task
+needs it either. Porting dead code adds tests to maintain for behaviour that can never
+render. Parity is about observable behaviour; this has none.
+
+**Method note this exposed:** this plan was written by reading function *definitions*
+without checking their *callers*. A defined function is not a used function. Before
+listing any function as behaviour to reproduce, grep for its call sites.
 
 Behaviour: project path as title (`pipeline.projectPath || pipeline.projectName || 'Pipeline'`, `index.html:3017` — reproduce the fallback chain exactly), triggering user avatar, job list with status icons, dismiss via `gitlab.dismissPipeline`, `failedPipelineMaxAge` filtering.
 

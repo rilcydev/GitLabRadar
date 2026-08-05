@@ -1,5 +1,5 @@
 import userEvent from '@testing-library/user-event';
-import { act, render, screen } from '@testing-library/react';
+import { act, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { Pipeline, PipelineJob } from '@/shared/types';
 // Relative imports: eslint's import/no-unresolved has no TS-aware resolver
@@ -8,7 +8,6 @@ import type { Pipeline, PipelineJob } from '@/shared/types';
 import { DEFAULT_CONFIG } from '../../../shared/types/config';
 import { renderWithApi } from '../../../test/renderWithApi';
 import { DataProvider } from '../../windows/menubar/DataProvider';
-import { getJobIcon } from './jobIcon';
 import { PipelinesTab } from './PipelinesTab';
 
 function renderTab(overrides?: Parameters<typeof renderWithApi>[1]) {
@@ -282,76 +281,5 @@ describe('PipelinesTab', () => {
     });
     await pushPipelines(emit, [a, b]);
     expect(await screen.findByText('2 pipelines hidden')).toBeInTheDocument();
-  });
-});
-
-// index.html:3096-3108 -- `getJobIcon`'s exact status -> icon mapping.
-// Ported per the task-16 brief even though it's dead code in the source
-// (see jobIcon.tsx's doc comment for the grep evidence); tested directly
-// here since it's never invoked from `PipelineRow`.
-describe('getJobIcon', () => {
-  function pathsOf(node: ReturnType<typeof getJobIcon>): string[] {
-    const { container } = render(<>{node}</>);
-    return [...container.querySelectorAll('path')].map((p) => p.getAttribute('d') ?? '');
-  }
-
-  it('running: pulses a partial-ring pause icon with the "running" class', () => {
-    const { container } = render(<>{getJobIcon('running')}</>);
-    const svg = container.querySelector('svg');
-    expect(svg).toHaveClass('job-icon', 'running');
-    expect(pathsOf(getJobIcon('running'))).toEqual([
-      'M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0zM1.5 8a6.5 6.5 0 1 1 13 0 6.5 6.5 0 0 1-13 0z',
-      'M8 3a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 8 3z',
-    ]);
-  });
-
-  it('success: renders the checkmark path', () => {
-    expect(pathsOf(getJobIcon('success'))).toEqual([
-      'M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.75.75 0 1 1 1.06-1.06L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0z',
-    ]);
-  });
-
-  it('failed: renders the X path', () => {
-    expect(pathsOf(getJobIcon('failed'))).toEqual([
-      'M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 1 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 0 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06z',
-    ]);
-  });
-
-  it('pending: renders a filled circle', () => {
-    const { container } = render(<>{getJobIcon('pending')}</>);
-    const circle = container.querySelector('circle');
-    expect(circle).toHaveAttribute('r', '3');
-  });
-
-  it('skipped: renders the double-bar path', () => {
-    expect(pathsOf(getJobIcon('skipped'))).toEqual([
-      'M6.5 3.5a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-1 0V4a.5.5 0 0 1 .5-.5zm3 0a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-1 0V4a.5.5 0 0 1 .5-.5z',
-    ]);
-  });
-
-  it('canceled: renders the ring-with-square path', () => {
-    expect(pathsOf(getJobIcon('canceled'))).toEqual([
-      'M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0zM5.5 5.5h5v5h-5v-5z',
-    ]);
-  });
-
-  it('manual: renders the plus path', () => {
-    expect(pathsOf(getJobIcon('manual'))).toEqual([
-      'M8 4a.75.75 0 0 1 .75.75v6.5a.75.75 0 0 1-1.5 0v-6.5A.75.75 0 0 1 8 4z',
-      'M4.75 7.25a.75.75 0 0 0 0 1.5h6.5a.75.75 0 0 0 0-1.5h-6.5z',
-    ]);
-  });
-
-  it('created: renders a small filled circle', () => {
-    const { container } = render(<>{getJobIcon('created')}</>);
-    const circle = container.querySelector('circle');
-    expect(circle).toHaveAttribute('r', '2');
-  });
-
-  // index.html:3107 -- `icons[status] || icons.created`.
-  it('falls back to the created icon for an unrecognized status', () => {
-    const { container: createdContainer } = render(<>{getJobIcon('created')}</>);
-    const { container: unknownContainer } = render(<>{getJobIcon('some-unknown-status')}</>);
-    expect(unknownContainer.querySelector('svg')?.outerHTML).toEqual(createdContainer.querySelector('svg')?.outerHTML);
   });
 });
