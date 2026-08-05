@@ -1,5 +1,6 @@
 import userEvent from '@testing-library/user-event';
 import { act, screen, waitFor } from '@testing-library/react';
+import { Component, type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import type { MergeRequest, MergeRequestAuthor } from '@/shared/types';
 // Relative import: eslint's import/no-unresolved has no TS-aware resolver
@@ -17,6 +18,33 @@ function renderTab(overrides?: Parameters<typeof renderWithApi>[1]) {
     </DataProvider>,
     overrides
   );
+}
+
+// Test-only error boundary for the two preserved-crash tests below. Those
+// crashes happen during a render triggered by a LATE async state update
+// (after a click kicks off a fetch, not during the initial synchronous
+// render), so `expect(() => render(...)).toThrow()` -- the pattern
+// Avatar.test.tsx:83 uses for its own synchronous-render version of this
+// same bug class -- doesn't apply: by the time the crash happens, `render`
+// has already returned normally. React 18's concurrent renderer also
+// double-attempts a throwing render to check whether it's transient, which
+// makes asserting on `act()`/`userEvent.click()` rejecting directly flaky
+// (confirmed empirically: it intermittently reports the assertion as both
+// passing AND separately unhandled). An error boundary sidesteps all of
+// that -- it's guaranteed to catch a render error regardless of what
+// triggered the render, and reproduces what would actually happen in the
+// real (boundary-less) app just as accurately: the tree unmounts.
+class CrashProbe extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state: { error: Error | null } = { error: null };
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+  render() {
+    if (this.state.error) {
+      return <div data-testid="crash-probe">{this.state.error.message}</div>;
+    }
+    return this.props.children;
+  }
 }
 
 function author(overrides: Partial<MergeRequestAuthor> = {}): MergeRequestAuthor {
@@ -363,5 +391,148 @@ describe('MergeRequestsTab', () => {
     await screen.findByText('Already assigned');
     expect(screen.queryByText('+ Assign')).not.toBeInTheDocument();
     expect(screen.getByText('+ Reviewer')).toBeInTheDocument();
+  });
+
+  // Fix round 1 -- CRITICAL. index.html:2643-2651 mutates the just-used
+  // action button's DOM node in place; that mutation lives only on that
+  // node. `renderMRs()` regenerates `list.innerHTML` from scratch and runs
+  // on dismissing ANY MR (:2550) -- including an unrelated one -- wiping
+  // the "Done" visual back to the default button instantly. A `Set`-only
+  // implementation would NOT reproduce this (it survives unrelated
+  // re-renders), so vanilla flickers/reverts where a naive port would stay
+  // stable -- an observable difference on one of the app's core
+  // interactive paths (assign/review actions land inside this window on
+  // or shortly after nearly every real one, since
+  // GITLAB_ASSIGN_MR/GITLAB_ADD_REVIEWER themselves trigger a server-side
+  // refresh independent of this component's own 1s-delayed one).
+  it('wipes the transient "Done" visual when an UNRELATED MR is dismissed (index.html:2550,2643-2651)', async () => {
+    const assignMR = vi.fn().mockResolvedValue(undefined);
+    const getProjectMembers = vi.fn().mockResolvedValue([{ id: 7, name: 'Bob', username: 'bob', avatar_url: '' }]);
+    const dismissMR = vi.fn().mockResolvedValue(undefined);
+    const { emit } = renderTab({ overrides: { gitlab: { assignMR, getProjectMembers, dismissMR } } });
+
+    const mrA = makeMR({ userRole: 'author', title: 'MR A needs assignee' });
+    const mrB = makeMR({ userRole: 'author', title: 'MR B unrelated' });
+    await pushMRs(emit, [mrA, mrB]);
+    await screen.findByText('MR A needs assignee');
+
+    // Complete an assign on MR A -- its button should now read "Done".
+    const assignButtons = screen.getAllByText('+ Assign');
+    await userEvent.click(assignButtons[0]);
+    const meItem = await screen.findByText('Me');
+    await userEvent.click(meItem);
+    await waitFor(() => expect(assignMR).toHaveBeenCalledWith(mrA.projectId, mrA.iid, [0]));
+    expect(await screen.findByText('Done')).toBeInTheDocument();
+
+    // Dismiss MR B -- unrelated to MR A's just-completed assign.
+    const dismissButtons = screen.getAllByTitle('Hide this MR');
+    // MR A's own dismiss button is the first one rendered (section order);
+    // click the second one (MR B's) to prove this isn't just "dismissing
+    // yourself clears your own state".
+    await userEvent.click(dismissButtons[1]);
+    expect(dismissMR).toHaveBeenCalledWith(mrB.id);
+
+    await waitFor(() => expect(screen.queryByText('Done')).not.toBeInTheDocument());
+    // The button reverts to its normal "+ Assign" label, not just losing
+    // the word "Done" some other way.
+    expect(await screen.findByText('+ Assign')).toBeInTheDocument();
+  });
+
+  // Fix round 1 -- bonus coverage for the same clearing mechanism via the
+  // OTHER trigger the coordinator named: a fresh `data:updated` push
+  // (index.html:3899), which is what GITLAB_ASSIGN_MR/GITLAB_ADD_REVIEWER's
+  // own server-side `pollingService.refresh()` call (handlers.ts:214,231)
+  // actually produces in the real app, independent of this component's own
+  // 1s-delayed `refresh()`.
+  it('wipes the transient "Done" visual when a new data:updated push arrives', async () => {
+    const assignMR = vi.fn().mockResolvedValue(undefined);
+    const getProjectMembers = vi.fn().mockResolvedValue([{ id: 7, name: 'Bob', username: 'bob', avatar_url: '' }]);
+    const { emit } = renderTab({ overrides: { gitlab: { assignMR, getProjectMembers } } });
+
+    const mr = makeMR({ userRole: 'author', title: 'MR needs assignee' });
+    await pushMRs(emit, [mr]);
+    await screen.findByText('MR needs assignee');
+
+    await userEvent.click(screen.getByText('+ Assign'));
+    await userEvent.click(await screen.findByText('Me'));
+    await waitFor(() => expect(assignMR).toHaveBeenCalledWith(mr.projectId, mr.iid, [0]));
+    expect(await screen.findByText('Done')).toBeInTheDocument();
+
+    // A poll cycle lands before the local 1s timer -- same `mr`, assignees
+    // still empty (the fake server hasn't actually applied anything), but
+    // it's still a fresh array reference, exactly like every real
+    // loadData()/data:updated in the source.
+    await pushMRs(emit, [mr]);
+
+    await waitFor(() => expect(screen.queryByText('Done')).not.toBeInTheDocument());
+  });
+
+  // Fix round 1 -- IMPORTANT. PRESERVED BUG, not a regression: same class
+  // as Avatar.test.tsx:83 (`a.name[0].toUpperCase()` with no `|| '?'`
+  // guard), a third occurrence in dedicated notes-panel markup that
+  // doesn't go through `Avatar` at all. index.html:2711 is equally
+  // unguarded (`note.author.name[0].toUpperCase()`); `MRNote.author` has
+  // no runtime validation between the GitLab API response and this render
+  // (src/main/ipc/handlers.ts:169-180 only guards with `|| ''`/`|| 'Unknown'`
+  // for `avatar_url`/`name` at the OBJECT level, not against an author
+  // whose `name` is itself an empty string). Do NOT add a `|| '?'` guard
+  // here to make this pass differently -- this test exists to confirm the
+  // crash, not hide it.
+  it('throws when a notes-panel comment author has no avatar and an empty name (preserved bug, index.html:2711)', async () => {
+    const getMRNotes = vi.fn().mockResolvedValue([
+      {
+        id: 1,
+        body: 'hi',
+        createdAt: new Date().toISOString(),
+        author: { name: '', username: 'ghost', avatar_url: '' },
+      },
+    ]);
+    const { emit } = renderWithApi(
+      <CrashProbe>
+        <DataProvider>
+          <MergeRequestsTab />
+        </DataProvider>
+      </CrashProbe>,
+      { overrides: { gitlab: { getMRNotes } } }
+    );
+    const mr = makeMR({ userRole: 'author', title: 'Crashy notes author', userNotesCount: 1 });
+    await pushMRs(emit, [mr]);
+    await screen.findByText('Crashy notes author');
+
+    const badge = screen.getByTitle('Click to view comments');
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await userEvent.click(badge);
+
+    expect(await screen.findByTestId('crash-probe')).toBeInTheDocument();
+    consoleError.mockRestore();
+  });
+
+  // Fix round 1 -- IMPORTANT. PRESERVED BUG, not a regression: same class
+  // again, a fourth occurrence. index.html:2601's member-dropdown
+  // placeholder is `m.name[0].toUpperCase()`, also unguarded, and (like
+  // the notes-panel one above) inline-styled markup that doesn't go
+  // through `Avatar` either. `ProjectMember.name` comes straight off
+  // `client.getProjectMembers()` (src/main/api/gitlab.ts) with no
+  // empty-string guard. Do NOT add a `|| '?'` guard here either.
+  it('throws when a project member has an empty name (preserved bug, index.html:2601)', async () => {
+    const getProjectMembers = vi.fn().mockResolvedValue([{ id: 7, name: '', username: 'ghost', avatar_url: '' }]);
+    const { emit } = renderWithApi(
+      <CrashProbe>
+        <DataProvider>
+          <MergeRequestsTab />
+        </DataProvider>
+      </CrashProbe>,
+      { overrides: { gitlab: { getProjectMembers } } }
+    );
+    const mr = makeMR({ userRole: 'author', title: 'Crashy member' });
+    await pushMRs(emit, [mr]);
+    await screen.findByText('Crashy member');
+
+    const assignBtn = screen.getByText('+ Assign');
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await userEvent.click(assignBtn);
+
+    expect(await screen.findByTestId('crash-probe')).toBeInTheDocument();
+    consoleError.mockRestore();
   });
 });

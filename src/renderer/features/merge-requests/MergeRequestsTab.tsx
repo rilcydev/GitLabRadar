@@ -272,10 +272,31 @@ export function MergeRequestsTab() {
   const [notesPanel, setNotesPanel] = useState<NotesPanelState | null>(null);
   const [dropdown, setDropdown] = useState<DropdownState | null>(null);
   // index.html:2644-2647 -- transient "Done" visual feedback on the
-  // just-used action button, cleared once `refresh()`'s resulting
-  // `data:updated` repopulates `assignees`/`reviewers` and the button stops
-  // rendering at all (see MergeRequestRow's `showAssignBtn`/`showReviewerBtn`).
+  // just-used action button.
+  //
+  // Fix round 1: vanilla mutates the button's DOM node IN PLACE
+  // (index.html:2643-2651) -- that mutation lives only on that node.
+  // `renderMRs()` instead regenerates `list.innerHTML` from scratch, and is
+  // called on dismissing ANY MR (:2550), on "Show all" (:2765), on every
+  // `loadData()` (:3857,:3878) and on every `data:updated` push (:3899) --
+  // every one of those wipes "Done" back to the default button instantly,
+  // discarding the in-place mutation. This is reachable well within the
+  // ~1s "Done" window in practice, not just a theoretical race:
+  // `GITLAB_ASSIGN_MR`/`GITLAB_ADD_REVIEWER` themselves call
+  // `pollingService.refresh()` server-side (src/main/ipc/handlers.ts:214,231),
+  // independent of this component's own 1s-delayed `refresh()` call below,
+  // so a `data:updated` push lands inside that window on or shortly after
+  // nearly every real assign/review action. `useState<Set<string>>` alone
+  // would NOT reproduce this -- it survives unrelated re-renders, so the
+  // port would stay stable where vanilla visibly flickers/reverts. The
+  // effect below (clearing on every new `data.mergeRequests`) and the two
+  // explicit clears in the dismiss/restore handlers together cover all
+  // four vanilla `renderMRs()` call sites above.
   const [doneActions, setDoneActions] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    setDoneActions(new Set());
+  }, [data.mergeRequests]);
 
   // index.html:2745-2756. Both the `.mr-action-btn`/`.mr-dropdown` click
   // handlers and the `.notes-badge`/`.notes-panel` ones call
@@ -385,6 +406,24 @@ export function MergeRequestsTab() {
     }
   }
 
+  // index.html:2542-2553. `dismissMR` (from `useMRDismissal`) itself
+  // mirrors `await window.gitlabbar.gitlab.dismissMR(mrId);
+  // dismissedMRIds.push(mrId);` -- the `renderMRs()` call right after that
+  // (index.html:2550) is what the `setDoneActions(new Set())` clear
+  // reproduces here (see the doc comment on `doneActions` above for why
+  // this is load-bearing, not gratuitous).
+  async function handleDismiss(id: number) {
+    await dismissMR(id);
+    setDoneActions(new Set());
+  }
+
+  // index.html:2758-2768. Same reasoning as `handleDismiss` above --
+  // `renderMRs()` at index.html:2765.
+  async function handleRestoreAll() {
+    await restoreMRs();
+    setDoneActions(new Set());
+  }
+
   // index.html:2469-2475
   if (data.isLoading) {
     return (
@@ -446,7 +485,7 @@ export function MergeRequestsTab() {
           <button
             id="restoreMRsBtn"
             onClick={() => {
-              void restoreMRs();
+              void handleRestoreAll();
             }}
           >
             Show all
@@ -475,7 +514,7 @@ export function MergeRequestsTab() {
                   void api.app.openExternal(mr.webUrl);
                 }}
                 onDismiss={() => {
-                  void dismissMR(mr.id);
+                  void handleDismiss(mr.id);
                 }}
                 onToggleNotes={(e) => {
                   void handleToggleNotes(mr, e);
