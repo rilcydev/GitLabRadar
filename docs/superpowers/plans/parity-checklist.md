@@ -37,9 +37,9 @@ first person to ever see it render.
 **Full diagnostic steps if a window opens blank** (three failure modes,
 how to tell them apart, and exactly what to look at in DevTools) are
 written out in:
-- `.superpowers/sdd/2026-08-04-react-migration/task-11-report.md` — section
+- `docs/superpowers/verification/preferences-window-switchover.md` — section
   "Human verification checklist (macOS required)", preferences window.
-- `.superpowers/sdd/2026-08-04-react-migration/task-19-report.md` — same
+- `docs/superpowers/verification/menubar-window-switchover.md` — same
   section, menubar window. This one also documents the case where **both**
   windows fail together, since Task 19 removed the last fallback.
 
@@ -196,7 +196,7 @@ shadow, or gradient is not on this list and is worth reporting.
   the two if you go looking at the styles directory.
 - **The Product Owner view's "stale watched projects" question was
   already investigated and closed in Task 17** (see the ledger,
-  `.superpowers/sdd/2026-08-04-react-migration/progress.md`, Task 17
+  `docs/superpowers/verification/migration-ledger.md`, Task 17
   section, for the reasoning). Not re-litigated here.
 
 ---
