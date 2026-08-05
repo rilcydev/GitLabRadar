@@ -41,8 +41,8 @@ export default defineConfig(async () => {
     build: {
       rollupOptions: {
         input: {
-          menubar: resolve(__dirname, 'src/renderer/windows/menubar/index.html'),
-          preferences: resolve(__dirname, 'src/renderer/windows/preferences/index.html'),
+          menubar: resolve(import.meta.dirname, 'src/renderer/windows/menubar/index.html'),
+          preferences: resolve(import.meta.dirname, 'src/renderer/windows/preferences/index.html'),
         },
       },
     },

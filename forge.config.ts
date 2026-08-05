@@ -31,7 +31,7 @@ const config: ForgeConfig = {
     },
     extraResource: [
       './assets',
-      // Vite-built React renderer (see vite.renderer.config.ts). Ship the
+      // Vite-built React renderer (see vite.renderer.config.mts). Ship the
       // whole `dist/` tree as one unit -- its entry HTML files reference
       // assets with relative paths several directories up, so copying only
       // part of this tree (or flattening it) silently breaks asset
@@ -59,19 +59,19 @@ const config: ForgeConfig = {
         {
           // `entry` is just an alias for `build.lib.entry` in the corresponding file of `config`.
           entry: 'src/main.ts',
-          config: 'vite.main.config.ts',
+          config: 'vite.main.config.mts',
           target: 'main',
         },
         {
           entry: 'src/preload.ts',
-          config: 'vite.preload.config.ts',
+          config: 'vite.preload.config.mts',
           target: 'preload',
         },
       ],
       renderer: [
         {
           name: 'main_window',
-          config: 'vite.renderer.config.ts',
+          config: 'vite.renderer.config.mts',
         },
       ],
     }),
