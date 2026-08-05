@@ -32,6 +32,7 @@ export function GeneralPage() {
     pipelineStarted: false,
     pipelineFailed: true,
     pipelineSuccess: false,
+    mrApproved: true,
   });
 
   // preferences.html:1104-1119

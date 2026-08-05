@@ -227,6 +227,8 @@ export class GitLabClient {
       assignees: mr.assignees || [],
       userNotesCount: mr.user_notes_count || 0,
       userMentionedInNotes: false,
+      approvedBy: [],
+      approvalsRequired: 0,
     };
   }
 

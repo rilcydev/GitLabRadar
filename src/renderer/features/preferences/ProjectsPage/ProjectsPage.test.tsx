@@ -166,6 +166,7 @@ describe('ProjectsPage', () => {
               pipelineStarted: false,
               pipelineFailed: true,
               pipelineSuccess: false,
+              mrApproved: true,
             },
             watchedProjectIds: [1, 2],
             watchedProjectsData: [

@@ -5,6 +5,7 @@ export interface NotificationConfig {
   pipelineStarted: boolean;
   pipelineFailed: boolean;
   pipelineSuccess: boolean;
+  mrApproved: boolean;
 }
 
 export interface WatchedProject {
@@ -39,6 +40,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     pipelineStarted: false,
     pipelineFailed: true,
     pipelineSuccess: false,
+    mrApproved: true,
   },
   watchedProjectIds: [],
   watchedProjectsData: [],

@@ -85,6 +85,8 @@ function makeMR(overrides: Partial<MergeRequest> = {}): MergeRequest {
     assignees: [],
     userNotesCount: 0,
     userMentionedInNotes: false,
+    approvedBy: [],
+    approvalsRequired: 0,
     ...overrides,
   };
 }

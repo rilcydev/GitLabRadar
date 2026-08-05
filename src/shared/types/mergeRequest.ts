@@ -31,6 +31,8 @@ export interface MergeRequest {
   assignees: MergeRequestAuthor[];
   userNotesCount: number;
   userMentionedInNotes: boolean;
+  approvedBy: MergeRequestAuthor[];
+  approvalsRequired: number;
 }
 
 export interface GitLabMergeRequestResponse {
