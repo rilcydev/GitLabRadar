@@ -467,18 +467,12 @@ describe('MergeRequestsTab', () => {
     await waitFor(() => expect(screen.queryByText('Done')).not.toBeInTheDocument());
   });
 
-  // Fix round 1 -- IMPORTANT. PRESERVED BUG, not a regression: same class
-  // as Avatar.test.tsx:83 (`a.name[0].toUpperCase()` with no `|| '?'`
-  // guard), a third occurrence in dedicated notes-panel markup that
-  // doesn't go through `Avatar` at all. index.html:2711 is equally
-  // unguarded (`note.author.name[0].toUpperCase()`); `MRNote.author` has
-  // no runtime validation between the GitLab API response and this render
-  // (src/main/ipc/handlers.ts:169-180 only guards with `|| ''`/`|| 'Unknown'`
-  // for `avatar_url`/`name` at the OBJECT level, not against an author
-  // whose `name` is itself an empty string). Do NOT add a `|| '?'` guard
-  // here to make this pass differently -- this test exists to confirm the
-  // crash, not hide it.
-  it('throws when a notes-panel comment author has no avatar and an empty name (preserved bug, index.html:2711)', async () => {
+  // Bug-lot fix (#8), third occurrence: the notes-panel author placeholder
+  // used an unguarded `note.author.name[0].toUpperCase()` (dedicated markup,
+  // not `Avatar`). An empty name from the GitLab response threw and -- with no
+  // error boundary in the real tree -- blanked the whole window. Now guarded
+  // with '?'.
+  it('renders "?" for a notes-panel comment author with an empty name instead of crashing (bug-lot fix #8)', async () => {
     const getMRNotes = vi.fn().mockResolvedValue([
       {
         id: 1,
@@ -500,21 +494,19 @@ describe('MergeRequestsTab', () => {
     await screen.findByText('Crashy notes author');
 
     const badge = screen.getByTitle('Click to view comments');
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     await userEvent.click(badge);
 
-    expect(await screen.findByTestId('crash-probe')).toBeInTheDocument();
-    consoleError.mockRestore();
+    // Panel renders (note body visible), no crash, empty name -> '?' placeholder.
+    expect(await screen.findByText('hi')).toBeInTheDocument();
+    expect(screen.queryByTestId('crash-probe')).not.toBeInTheDocument();
+    expect(screen.getByText('?')).toBeInTheDocument();
   });
 
-  // Fix round 1 -- IMPORTANT. PRESERVED BUG, not a regression: same class
-  // again, a fourth occurrence. index.html:2601's member-dropdown
-  // placeholder is `m.name[0].toUpperCase()`, also unguarded, and (like
-  // the notes-panel one above) inline-styled markup that doesn't go
-  // through `Avatar` either. `ProjectMember.name` comes straight off
-  // `client.getProjectMembers()` (src/main/api/gitlab.ts) with no
-  // empty-string guard. Do NOT add a `|| '?'` guard here either.
-  it('throws when a project member has an empty name (preserved bug, index.html:2601)', async () => {
+  // Bug-lot fix (#8), fourth occurrence: the member-dropdown placeholder used
+  // an unguarded `member.name[0].toUpperCase()` (inline-styled markup, not
+  // `Avatar`). An empty member name threw and blanked the whole window; now
+  // guarded with '?'.
+  it('renders a member with an empty name instead of crashing (bug-lot fix #8)', async () => {
     const getProjectMembers = vi.fn().mockResolvedValue([{ id: 7, name: '', username: 'ghost', avatar_url: '' }]);
     const { emit } = renderWithApi(
       <CrashProbe>
@@ -529,10 +521,10 @@ describe('MergeRequestsTab', () => {
     await screen.findByText('Crashy member');
 
     const assignBtn = screen.getByText('+ Assign');
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     await userEvent.click(assignBtn);
 
-    expect(await screen.findByTestId('crash-probe')).toBeInTheDocument();
-    consoleError.mockRestore();
+    // Dropdown opens with the member (username visible), no crash.
+    expect(await screen.findByText('@ghost')).toBeInTheDocument();
+    expect(screen.queryByTestId('crash-probe')).not.toBeInTheDocument();
   });
 });

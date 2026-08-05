@@ -18,11 +18,10 @@ import styles from './ProjectsPage.module.css';
 //   but is NOT called out in the task-9 brief's behaviour list (which only
 //   mentions "Searching...", "No projects found" and "Error during search").
 //   The source wins per the task instructions; see task-9-report.md.
-// - preferences.html:1197-1198 / :1248: search results show
-//   `project.name` on one line and `project.path_with_namespace` on the
-//   next; watched-project chips show `project.name` only, never the full
-//   namespace path. This is a known scoped-out feature (bug #3 in the
-//   plan's Global Constraints) -- reproduced literally, not "fixed" here.
+// - preferences.html:1197-1198 / :1248: search results show `project.name`
+//   on one line and `project.path_with_namespace` on the next. Bug-lot fix
+//   (#3): watched-project chips now show the full `project.path`
+//   (namespace/path) too, not just the short name.
 // - preferences.html:1229-1230 always writes both `watchedProjectIds` and
 //   `watchedProjectsData` on every toggle/remove -- reproduced as two
 //   `api.config.set` calls per change, exactly like the source (not merged
@@ -41,6 +40,8 @@ export function ProjectsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [listState, setListState] = useState<ListState>({ kind: 'initial' });
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Bug-lot fix (#5): monotonic request counter to drop out-of-order responses.
+  const searchGenerationRef = useRef(0);
 
   // preferences.html:1271-1281
   const loadWatchedProjects = useCallback(async () => {
@@ -71,14 +72,19 @@ export function ProjectsPage() {
   // preferences.html:1169-1179
   const performSearch = useCallback(
     async (query: string) => {
+      // Bug-lot fix (#5): tag each request so a stale response that resolves
+      // out of order can't overwrite a fresher one's results.
+      const generation = ++searchGenerationRef.current;
       try {
         const projects = await api.gitlab.searchProjects(query);
+        if (generation !== searchGenerationRef.current) return;
         if (!projects || projects.length === 0) {
           setListState({ kind: 'empty' });
         } else {
           setListState({ kind: 'results', projects });
         }
       } catch (err) {
+        if (generation !== searchGenerationRef.current) return;
         console.error('Error searching projects:', err);
         setListState({ kind: 'error' });
       }
@@ -207,11 +213,12 @@ export function ProjectsPage() {
               <span className={styles.watchedProjectsCount}>{watchedProjects.length}</span>
             </div>
             <div>
-              {/* preferences.html:1246-1253. Chips show `project.name`
-                  only -- see the parity note above. */}
+              {/* preferences.html:1246-1253. Bug-lot fix (#3): chips now show
+                  the full `project.path` (namespace/path) instead of the short
+                  name, so same-named projects in different groups differ. */}
               {watchedProjects.map((project) => (
                 <span key={project.id} className={styles.watchedProjectChip}>
-                  {project.name}
+                  {project.path}
                   <svg
                     className={styles.watchedProjectRemove}
                     viewBox="0 0 24 24"

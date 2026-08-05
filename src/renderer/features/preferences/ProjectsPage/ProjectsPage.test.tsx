@@ -125,7 +125,7 @@ describe('ProjectsPage', () => {
     expect(screen.getByText('cyril/gitlab-bar')).toBeInTheDocument();
   });
 
-  it('toggling a project persists both watchedProjectIds and watchedProjectsData, and shows a chip with only the name', async () => {
+  it('toggling a project persists both watchedProjectIds and watchedProjectsData, and shows a chip with the full namespace/path', async () => {
     vi.useFakeTimers();
     const searchProjects = vi.fn().mockResolvedValue([apiProject]);
     const { api } = renderWithApi(<ProjectsPage />, { overrides: { gitlab: { searchProjects } } });
@@ -144,12 +144,12 @@ describe('ProjectsPage', () => {
       { id: 1, name: 'gitlab-bar', path: 'cyril/gitlab-bar' },
     ]);
 
-    // Chip shows the project name only, never the namespace path.
+    // Chip shows the full namespace/path (bug-lot fix #3).
     const chipTitle = screen.getByText('Watched projects', { selector: 'div' });
     const chipsSection = chipTitle.parentElement;
     expect(chipsSection).not.toBeNull();
-    expect(within(chipsSection as HTMLElement).getByText('gitlab-bar')).toBeInTheDocument();
-    expect(within(chipsSection as HTMLElement).queryByText('cyril/gitlab-bar')).not.toBeInTheDocument();
+    expect(within(chipsSection as HTMLElement).getByText('cyril/gitlab-bar')).toBeInTheDocument();
+    expect(within(chipsSection as HTMLElement).queryByText('gitlab-bar')).not.toBeInTheDocument();
   });
 
   it('removing a chip persists the reduced list', async () => {
@@ -185,17 +185,17 @@ describe('ProjectsPage', () => {
       },
     });
 
-    await screen.findByText('gitlab-bar');
-    expect(screen.getByText('other-project')).toBeInTheDocument();
+    await screen.findByText('cyril/gitlab-bar');
+    expect(screen.getByText('cyril/other-project')).toBeInTheDocument();
 
-    const chip = screen.getByText('gitlab-bar').closest('span');
+    const chip = screen.getByText('cyril/gitlab-bar').closest('span');
     expect(chip).not.toBeNull();
     const removeButton = (chip as HTMLElement).querySelector('svg');
     expect(removeButton).not.toBeNull();
     await userEvent.click(removeButton as SVGElement);
 
-    await waitFor(() => expect(screen.queryByText('gitlab-bar')).not.toBeInTheDocument());
-    expect(screen.getByText('other-project')).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText('cyril/gitlab-bar')).not.toBeInTheDocument());
+    expect(screen.getByText('cyril/other-project')).toBeInTheDocument();
 
     await waitFor(async () => {
       expect(await api.config.get('watchedProjectIds')).toEqual([2]);
@@ -203,5 +203,44 @@ describe('ProjectsPage', () => {
     expect(await api.config.get('watchedProjectsData')).toEqual([
       { id: 2, name: 'other-project', path: 'cyril/other-project' },
     ]);
+  });
+
+  // Bug-lot fix (#5): an out-of-order search response must not overwrite a
+  // fresher one. Two searches are in flight; the earlier (stale) one resolves
+  // last and must be dropped via a request-generation guard.
+  it('ignores a stale search response that resolves after a newer one', async () => {
+    vi.useFakeTimers();
+    const resolvers: Array<(v: (typeof apiProject)[]) => void> = [];
+    const searchProjects = vi.fn(
+      () => new Promise<(typeof apiProject)[]>((resolve) => resolvers.push(resolve))
+    );
+    renderWithApi(<ProjectsPage />, { overrides: { gitlab: { searchProjects } } });
+
+    const input = screen.getByPlaceholderText('Search for a project...');
+    // First search ("ap") -> performSearch #1 (pending, resolvers[0]).
+    await typeWithFakeTimers(input, 'ap');
+    vi.advanceTimersByTime(300);
+    // Second search ("api") -> performSearch #2 (pending, resolvers[1]).
+    await typeWithFakeTimers(input, 'i');
+    vi.advanceTimersByTime(300);
+    expect(searchProjects).toHaveBeenCalledTimes(2);
+
+    const stale = { ...apiProject, id: 1, name: 'stale-result', path_with_namespace: 'x/stale-result' };
+    const fresh = { ...apiProject, id: 2, name: 'fresh-result', path_with_namespace: 'y/fresh-result' };
+
+    // Newer request settles first with fresh results...
+    await act(async () => {
+      resolvers[1]([fresh]);
+      await Promise.resolve();
+    });
+    // ...then the older request settles late with stale results.
+    await act(async () => {
+      resolvers[0]([stale]);
+      await Promise.resolve();
+    });
+    vi.useRealTimers();
+
+    expect(screen.getByText('fresh-result')).toBeInTheDocument();
+    expect(screen.queryByText('stale-result')).not.toBeInTheDocument();
   });
 });

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import styles from './Avatar.module.css';
 
 export type AvatarSize = 'item' | 'mini';
@@ -26,35 +27,19 @@ export interface AvatarProps {
  * index.html:2782-2784 (item size, author avatar) and :2791-2796 /
  * :2806-2811 (mini size, assignee/reviewer stacks).
  *
- * Three behaviours are DELIBERATELY preserved as-is, not fixed:
+ * Bug-lot fixes applied here (were preserved verbatim from the vanilla
+ * source for phase-1 parity):
  *
- * 1. No `onerror` handler on the <img>. A broken/401 avatar URL renders as
- *    a broken image, not the initial-letter placeholder. This is bug #2 of
- *    the plan's preserved-bug list -- see Avatar.test.tsx for the test that
- *    documents it (fires a real `error` event and asserts the <img> is
- *    still there with no placeholder) so a later change doesn't silently
- *    "fix" it.
- * 2. At item size, the placeholder initial defaults to '?' when the name
- *    is falsy (`(name || '?').charAt(0)`), mirroring index.html:2784's
- *    `(mr.author?.name || '?')[0].toUpperCase()` exactly -- note this is a
- *    different fallback than the item-author-name text next to it, which
- *    uses 'Unknown' (index.html:2835). Do not unify the two; they are
- *    separate strings in the source.
- * 3. At mini size, the placeholder initial has NO such guard -- it mirrors
- *    index.html:2794/:2809's unguarded `a.name[0].toUpperCase()` exactly,
- *    including the crash: an empty/undefined `name` throws
- *    (`''[0]` is `undefined`, `undefined.toUpperCase()` throws). Fix round
- *    1 confirmed this is reachable at runtime, not just a type-system
- *    impossibility: `transformMergeRequest`
- *    (src/main/api/gitlab.ts) only guards at the array level
- *    (`assignees: mr.assignees || []`), and nothing in this repo validates
- *    individual elements against the live GitLab response (no zod/io-ts/
- *    ajv anywhere) -- `MergeRequestAuthor.name: string` is a compile-time
- *    claim, not a runtime guarantee, for data coming off the same
- *    self-hosted instance already known to return surprising 401s. Do NOT
- *    add a `|| '?'` guard here to "fix" this -- see Avatar.test.tsx for the
- *    test documenting the crash, which is bug scoped for the post-migration
- *    lot, not this task.
+ * 1. onError fallback (#1/#2): the source had no `onerror` on the <img>, so
+ *    a broken/401 avatar URL showed the browser's broken-image glyph. The
+ *    <img> now falls back to the initial-letter placeholder on error, and
+ *    the error flag resets whenever `src` changes so a later valid URL is
+ *    retried.
+ * 2. Empty-name guard (#8): the mini-size placeholder used an unguarded
+ *    `name![0]`, which threw on an empty/missing name from the live GitLab
+ *    response -- and with no error boundary in the tree, that blanked the
+ *    whole window. Both sizes now use the same `(name || '?')` guard the
+ *    item size always had (index.html:2784).
  *
  * `title` is only ever set at mini size: index.html:2793 and :2808 put a
  * `title="${name}"` tooltip on both the <img> and placeholder <div> for
@@ -64,25 +49,28 @@ export interface AvatarProps {
 export function Avatar({ src, name, size }: AvatarProps) {
   const isMini = size === 'mini';
   const title = isMini ? name : undefined;
+  const [errored, setErrored] = useState(false);
 
-  if (src) {
+  // Reset the error flag when the URL changes so a fresh src is retried
+  // instead of being stuck on the placeholder from a previous failure.
+  useEffect(() => {
+    setErrored(false);
+  }, [src]);
+
+  if (src && !errored) {
     return (
       <img
         className={isMini ? styles.miniAvatar : styles.itemAvatar}
         src={src}
         alt={name}
         title={title}
+        onError={() => setErrored(true)}
       />
     );
   }
 
-  // See point 2/3 above: item size guards a missing name with '?'
-  // (index.html:2784); mini size does not (index.html:2794/:2809) and
-  // throws on an empty/undefined name exactly as the vanilla does. The
-  // non-null assertion on the mini branch is deliberate -- it is what lets
-  // `name![0]` reproduce the source's unguarded crash instead of silently
-  // tolerating it.
-  const initial = isMini ? name![0].toUpperCase() : (name || '?').charAt(0).toUpperCase();
+  // '?' guards a missing/empty name at both sizes (index.html:2784).
+  const initial = (name || '?').charAt(0).toUpperCase();
 
   return (
     <div className={isMini ? styles.miniAvatarPlaceholder : styles.itemAvatarPlaceholder} title={title}>

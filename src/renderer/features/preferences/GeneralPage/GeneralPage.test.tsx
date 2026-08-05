@@ -153,11 +153,11 @@ describe('GeneralPage', () => {
     ]);
   });
 
-  // Pre-existing bug reproduced from preferences.html:1112:
-  // `failedPipelineMaxAge.value = config.failedPipelineMaxAge || 24` treats
-  // a stored `0` ("Never hide") as falsy and displays 24 instead. Strict
-  // parity: reproduced, not fixed. See task-10-report.md.
-  it('BUG (reproduced from source): a stored failedPipelineMaxAge of 0 displays as 24, not "Never hide"', async () => {
+  // Fix (bug lot, was preferences.html:1112): a stored `0` ("Never hide")
+  // must survive a reload. The source used `config.failedPipelineMaxAge || 24`,
+  // treating the legitimate `0` as falsy and reverting the display to 24;
+  // fixed to `?? 24` so only null/undefined falls back to the default.
+  it('displays a stored failedPipelineMaxAge of 0 as "Never hide" (0), not 24', async () => {
     const { container } = renderWithApi(<GeneralPage />, {
       overrides: {
         config: { getAll: async () => ({ ...(await realDefaultConfig()), failedPipelineMaxAge: 0 }) },
@@ -166,18 +166,15 @@ describe('GeneralPage', () => {
 
     await waitFor(() => {
       const el = container.querySelector<HTMLSelectElement>('#failedPipelineMaxAge');
-      expect(el?.value).toBe('24');
+      expect(el?.value).toBe('0');
     });
   });
 
-  // preferences.html:947-971 markup + the absence of any script wiring for
-  // these two ids anywhere in the file (grepped). Dead checkboxes: always
-  // rendered checked regardless of `notifications.newMRAssigned` /
-  // `notifications.pipelineFailed`, and clicking them never calls
-  // `config.set`. The task-10 brief describes these as bound to config --
-  // the real source contradicts that; reproduced as-is per the source-wins
-  // rule. See task-10-report.md.
-  it('BUG (reproduced from source): notifyNewMR and notifyFailedPipeline are dead checkboxes with no config I/O', async () => {
+  // Fix (bug lot, was preferences.html:947-971): the two notification toggles
+  // were dead (uncontrolled `defaultChecked`, no config I/O). They now load
+  // from `notifications.newMRAssigned` / `notifications.pipelineFailed` and
+  // persist changes via `config.set('notifications', ...)`.
+  it('loads the notification toggles from config.notifications and writes them back on change', async () => {
     const { api, container } = renderWithApi(<GeneralPage />, {
       overrides: {
         config: {
@@ -188,7 +185,7 @@ describe('GeneralPage', () => {
               newMRAssigned: false,
               mrMentioned: true,
               pipelineStarted: false,
-              pipelineFailed: false,
+              pipelineFailed: true,
               pipelineSuccess: false,
             },
           }),
@@ -199,31 +196,25 @@ describe('GeneralPage', () => {
     const newMR = await waitFor(() => {
       const el = container.querySelector<HTMLInputElement>('#notifyNewMR');
       expect(el).not.toBeNull();
+      // Reflects config.notifications.newMRAssigned (false), not a hardcoded default.
+      expect(el?.checked).toBe(false);
       return el as HTMLInputElement;
     });
     const failedPipeline = container.querySelector<HTMLInputElement>('#notifyFailedPipeline') as HTMLInputElement;
-
-    // Rendered checked even though the *displayed* config (via the
-    // overridden config.getAll above) says both are false -- proves these
-    // two checkboxes never read from config at all.
-    expect(newMR.checked).toBe(true);
+    // Reflects config.notifications.pipelineFailed (true).
     expect(failedPipeline.checked).toBe(true);
 
-    // Snapshot the real underlying store (untouched by the getAll override
-    // above, which only changes what getAll() *returns* -- config.get()
-    // still reads the real FakeApi store, seeded from DEFAULT_CONFIG).
-    const notificationsBeforeClick = await api.config.get('notifications');
-
     await userEvent.click(newMR);
+    expect(newMR.checked).toBe(true);
+    await waitFor(async () => {
+      expect((await api.config.get('notifications')).newMRAssigned).toBe(true);
+    });
+
     await userEvent.click(failedPipeline);
-    // Native checkbox behaviour still toggles the DOM node itself...
-    expect(newMR.checked).toBe(false);
     expect(failedPipeline.checked).toBe(false);
-    // ...but nothing was ever persisted: the store is bit-for-bit the same
-    // object it was before either click, proving no `config.set` call for
-    // `notifications` ever happened.
-    const notificationsAfterClick = await api.config.get('notifications');
-    expect(notificationsAfterClick).toEqual(notificationsBeforeClick);
+    await waitFor(async () => {
+      expect((await api.config.get('notifications')).pipelineFailed).toBe(false);
+    });
   });
 });
 

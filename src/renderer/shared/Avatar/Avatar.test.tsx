@@ -15,29 +15,17 @@ describe('Avatar', () => {
     expect(screen.getByText('C')).toBeInTheDocument();
   });
 
-  // index.html:2782-2784 has NO onerror handler on the <img> -- a broken
-  // avatar URL (e.g. the self-hosted-GitLab 401 case from the human's
-  // original complaint) stays a broken image instead of falling back to
-  // the initial. This is bug #2 of the plan's preserved-bug list and is
-  // DELIBERATE for this phase. Do not "fix" this by adding an onError
-  // handler that swaps in the placeholder -- that would silently break
-  // parity with the vanilla app.
-  //
-  // Fix round 1: an earlier version of this test asserted
-  // `expect(screen.getByRole('img')).not.toHaveAttribute('onerror')`, which
-  // is VACUOUSLY true in React regardless of whether an onError handler
-  // exists -- React never serializes an `onError` prop to a DOM
-  // `onerror` attribute, it routes through the synthetic event system.
-  // That version passed even with a stateful onError fallback wired up (see
-  // task-14-report.md's fix-round-1 addendum for the proof). This version
-  // exercises the actual behaviour instead: fire a real `error` event on
-  // the <img> and assert nothing swaps in a placeholder.
-  it('keeps rendering the broken <img> after it errors -- no error-driven fallback (parity: index.html:2782-2784 has no onerror handler)', () => {
+  // Bug-lot fix (#1/#2): a broken/401 avatar URL now falls back to the
+  // initial-letter placeholder via an onError handler, instead of showing the
+  // browser's broken-image glyph. This is the self-hosted-GitLab 401 case the
+  // app exists to handle. Fire a real `error` event and assert the placeholder
+  // takes over.
+  it('falls back to the initial-letter placeholder when the <img> errors (bug-lot fix: self-hosted 401 avatars)', () => {
     render(<Avatar src="https://example.com/broken.png" name="Cyril" size="item" />);
     const img = screen.getByRole('img', { name: 'Cyril' });
     fireEvent.error(img);
-    expect(screen.getByRole('img', { name: 'Cyril' })).toBeInTheDocument();
-    expect(screen.queryByText('C')).not.toBeInTheDocument();
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+    expect(screen.getByText('C')).toBeInTheDocument();
   });
 
   // index.html:2784: `(mr.author?.name || '?')[0].toUpperCase()` -- the
@@ -68,20 +56,13 @@ describe('Avatar', () => {
     expect(placeholder).toHaveAttribute('title', 'Cyril');
   });
 
-  // PRESERVED BUG, not a regression: index.html:2794/:2809's mini-avatar
-  // placeholder is `${a.name[0].toUpperCase()}` with NO `|| '?'` guard,
-  // unlike the item-size placeholder above. `a.name` is typed non-optional
-  // (MergeRequestAuthor.name: string), but that type is never validated at
-  // runtime -- transformMergeRequest (src/main/api/gitlab.ts) only guards
-  // `assignees`/`reviewers` at the array level (`mr.assignees || []`), so
-  // an element with an empty/missing name from the live GitLab response
-  // reaches here unguarded, exactly as in the vanilla source. Do NOT add a
-  // '?' fallback here to make this test pass differently -- that would
-  // "fix" a bug the plan scopes to the post-migration lot. If a mandated
-  // test ever contradicts this, stop and ask; this one confirms the bug
-  // instead of hiding it.
-  it('throws on an empty mini-avatar name -- preserved bug, no "?" guard at mini size (index.html:2794,2809)', () => {
-    expect(() => render(<Avatar src={undefined} name="" size="mini" />)).toThrow();
+  // Bug-lot fix (#8): the mini-avatar placeholder was `name![0]` with no
+  // guard, so an empty/missing name from the live GitLab response threw --
+  // and with no error boundary in the tree, that blanked the whole window.
+  // Now guarded with '?' like the item size (index.html:2784).
+  it('renders "?" for an empty mini-avatar name instead of crashing (bug-lot fix #8)', () => {
+    render(<Avatar src={undefined} name="" size="mini" />);
+    expect(screen.getByText('?')).toBeInTheDocument();
   });
 });
 

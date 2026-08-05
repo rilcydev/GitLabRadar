@@ -94,12 +94,10 @@ export function UntagProjectRow({ project, idx, expanded, onToggleExpand, onOpen
     >
       <div className={styles.itemIcon}>{ITEM_ICON}</div>
       <div className={styles.itemContent}>
-        {/* index.html:3765,3715 -- `project.projectName`, NOT
-            `project.projectPath`. DELIBERATE, not a bug to fix: showing the
-            full path is a feature scoped to the post-migration follow-up lot
-            (plan's preserved bug #3). Reproduced literally -- see
-            UntagTab.test.tsx's pinning test. */}
-        <div className={styles.itemTitle}>{project.projectName}</div>
+        {/* index.html:3765,3715 -- Bug-lot fix (#3): show the full
+            `project.projectPath` instead of the short `projectName`, so
+            same-named projects in different groups are distinguishable. */}
+        <div className={styles.itemTitle}>{project.projectPath}</div>
         <div className={styles.itemSubtitle}>
           <span className={styles.tagName}>{project.lastTagName}</span>
           <span className={styles.commitsCount}>

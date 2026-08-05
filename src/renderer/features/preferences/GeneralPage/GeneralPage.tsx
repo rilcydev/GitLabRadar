@@ -9,26 +9,15 @@ import styles from './GeneralPage.module.css';
 // Ported verbatim from src/renderer/preferences.html:872-974 (markup) and
 // the loadSettings/change-listener handlers at :1104-1150 (script).
 //
-// Parity notes (see task-10-report.md for the full account):
-// - preferences.html:956 and :967: `notifyNewMR` and `notifyFailedPipeline`
-//   are declared in the markup with a hardcoded `checked` attribute, but
-//   grepping the entire inline `<script>` block (and the rest of the repo)
-//   for `notifyNewMR`/`notifyFailedPipeline` turns up NOTHING beyond those
-//   two markup lines: no `document.getElementById`, no `.checked =` on
-//   load, no `addEventListener('change', ...)`. They are dead checkboxes --
-//   always rendered checked, freely clickable in the DOM like any native
-//   checkbox, but wired to nothing. They never read
-//   `notifications.newMRAssigned` / `notifications.pipelineFailed` on load
-//   and never write them on change. This contradicts the task-10 brief,
-//   which describes them as bound to those two config keys. The source
-//   wins per the task instructions -- reproduced here as two uncontrolled
-//   `defaultChecked` checkboxes with no `onChange` handler and no config
-//   read at all. See task-10-report.md for the full discrepancy writeup.
-// - preferences.html:1112: `failedPipelineMaxAge.value = config.failedPipelineMaxAge
-//   || 24` uses `||`, which treats the legitimate stored value `0` ("Never
-//   hide") as falsy and silently resets the displayed selection to `24` on
-//   every reload -- a pre-existing bug, reproduced literally below (not
-//   "fixed" to `??`).
+// Bug-lot fixes (previously reproduced from the vanilla source for phase-1
+// parity, now corrected):
+// - Notifications (#6): `notifyNewMR` / `notifyFailedPipeline` were dead
+//   checkboxes in the source (hardcoded `checked`, no config I/O). They are
+//   now controlled by `notifications.newMRAssigned` /
+//   `notifications.pipelineFailed`, loaded on mount and persisted on change.
+// - failedPipelineMaxAge (#7): the source used `|| 24`, treating a stored
+//   `0` ("Never hide") as falsy and reverting the display to 24 on reload.
+//   Now `?? 24`, so only null/undefined falls back to the default.
 export function GeneralPage() {
   const api = useApi();
   const [launchAtStartup, setLaunchAtStartup] = useState(false);
@@ -36,6 +25,14 @@ export function GeneralPage() {
   const [refreshInterval, setRefreshInterval] = useState(60000);
   const [failedPipelineMaxAge, setFailedPipelineMaxAge] = useState(24);
   const [showUnassignedMRs, setShowUnassignedMRs] = useState(false);
+  const [notifications, setNotifications] = useState<AppConfig['notifications']>({
+    enabled: true,
+    newMRAssigned: true,
+    mrMentioned: true,
+    pipelineStarted: false,
+    pipelineFailed: true,
+    pipelineSuccess: false,
+  });
 
   // preferences.html:1104-1119
   useEffect(() => {
@@ -46,10 +43,11 @@ export function GeneralPage() {
           setLaunchAtStartup(config.launchAtStartup || false);
           setViewMode(config.viewMode || 'developer');
           setRefreshInterval(config.refreshInterval || 60000);
-          // Bug reproduced verbatim: `|| 24` treats a stored `0` ("Never
-          // hide") as falsy -- see the parity note above.
-          setFailedPipelineMaxAge(config.failedPipelineMaxAge || 24);
+          // Fixed (bug lot): `?? 24` so a stored `0` ("Never hide") survives a
+          // reload; only null/undefined falls back to the 24h default.
+          setFailedPipelineMaxAge(config.failedPipelineMaxAge ?? 24);
           setShowUnassignedMRs(config.showUnassignedMRs || false);
+          if (config.notifications) setNotifications(config.notifications);
         }
       } catch (err) {
         // preferences.html:1116-1118
@@ -109,6 +107,26 @@ export function GeneralPage() {
       await api.config.set('showUnassignedMRs', checked);
     },
     [api]
+  );
+
+  // Bug-lot fix (#6): the two notification toggles now read from and write to
+  // config.notifications instead of being inert.
+  const handleNotifyNewMRChange = useCallback(
+    async (e: ChangeEvent<HTMLInputElement>) => {
+      const next = { ...notifications, newMRAssigned: e.target.checked };
+      setNotifications(next);
+      await api.config.set('notifications', next);
+    },
+    [api, notifications]
+  );
+
+  const handleNotifyFailedPipelineChange = useCallback(
+    async (e: ChangeEvent<HTMLInputElement>) => {
+      const next = { ...notifications, pipelineFailed: e.target.checked };
+      setNotifications(next);
+      await api.config.set('notifications', next);
+    },
+    [api, notifications]
   );
 
   return (
@@ -223,10 +241,13 @@ export function GeneralPage() {
             <div className={styles.toggleLabel}>New assigned MRs</div>
             <div className={styles.toggleDesc}>Receive a notification when an MR is assigned to you</div>
           </div>
-          {/* preferences.html:956: dead checkbox, see the parity note above --
-              uncontrolled, hardcoded checked, no onChange, no config I/O. */}
           <label className={styles.toggle}>
-            <input type="checkbox" id="notifyNewMR" defaultChecked />
+            <input
+              type="checkbox"
+              id="notifyNewMR"
+              checked={notifications.newMRAssigned}
+              onChange={(e) => void handleNotifyNewMRChange(e)}
+            />
             <span className={styles.toggleSlider} />
           </label>
         </div>
@@ -236,9 +257,13 @@ export function GeneralPage() {
             <div className={styles.toggleLabel}>Failed pipelines</div>
             <div className={styles.toggleDesc}>Receive a notification when a pipeline fails</div>
           </div>
-          {/* preferences.html:967: same dead checkbox as above. */}
           <label className={styles.toggle}>
-            <input type="checkbox" id="notifyFailedPipeline" defaultChecked />
+            <input
+              type="checkbox"
+              id="notifyFailedPipeline"
+              checked={notifications.pipelineFailed}
+              onChange={(e) => void handleNotifyFailedPipelineChange(e)}
+            />
             <span className={styles.toggleSlider} />
           </label>
         </div>

@@ -53,15 +53,11 @@ describe('AccountsPage', () => {
     expect(await screen.findByText('Account added successfully!')).toBeInTheDocument();
   });
 
-  // preferences.html:1080-1084 checks the truthiness of the *object*
-  // resolved by validateToken() (`{valid, user?}`), which is never falsy --
-  // so this branch is dead code in the shipped app: an invalid token does
-  // NOT block adding the account. This is a known pre-existing bug, ruled
-  // by the human (task-8 fix-round-1) to be reproduced as-is and fixed in
-  // the post-migration bug-fix lot, alongside the missing avatar onerror
-  // fallback and the self-hosted avatar 401. Do NOT "fix" this test or the
-  // component to gate on `.valid` -- that silently breaks parity.
-  it('adds the account even when the token is invalid (parity: the vanilla gate is dead code)', async () => {
+  // Bug-lot fix (#4): the vanilla gate checked the truthiness of the whole
+  // validateToken() result object (`{valid, user?}`), which is never falsy, so
+  // an invalid token was added anyway (preferences.html:1080-1084). It now
+  // gates on `.valid` and blocks the add.
+  it('blocks adding the account when the token is invalid', async () => {
     const validateToken = vi.fn().mockResolvedValue({ valid: false });
     const add = vi.fn().mockResolvedValue({ success: true, account });
     renderWithApi(<AccountsPage />, {
@@ -72,11 +68,9 @@ describe('AccountsPage', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Add account' }));
 
     await waitFor(() => expect(validateToken).toHaveBeenCalledWith('https://gitlab.com', 'bad'));
-    await waitFor(() =>
-      expect(add).toHaveBeenCalledWith({ name: 'Work', instanceUrl: 'https://gitlab.com', token: 'bad' })
-    );
-    expect(screen.queryByText('Invalid token or incorrect URL')).not.toBeInTheDocument();
-    expect(await screen.findByText('Account added successfully!')).toBeInTheDocument();
+    expect(await screen.findByText('Invalid token or incorrect URL')).toBeInTheDocument();
+    expect(add).not.toHaveBeenCalled();
+    expect(screen.queryByText('Account added successfully!')).not.toBeInTheDocument();
   });
 
   it('shows a status message and blocks submission when a field is missing', async () => {

@@ -29,16 +29,10 @@ interface Status {
 // - The "delete" flow (:1037-1047) does not check the resolved
 //   AccountRemovalResult's `success` field before showing "Account
 //   deleted" -- reproduced as-is.
-// - preferences.html:1080-1084 does `const isValid = await
-//   window.gitlabbar.accounts.validateToken(url, token); if (!isValid) {...}`.
-//   `validateToken` resolves an object (`{valid, user?}`), which is never
-//   falsy, so this branch is dead code in the shipped app: an invalid token
-//   never blocks adding the account. This is a known pre-existing bug,
-//   ruled by the human (fix-round-1) to be reproduced as-is and fixed in
-//   the post-migration bug-fix lot alongside the missing avatar onerror
-//   fallback and the self-hosted avatar 401. DO NOT "fix" this by gating on
-//   `validation.valid` -- gate on the truthiness of the resolved object
-//   itself, exactly like the source, so the branch stays unreachable.
+// - Bug-lot fix (#4): the vanilla gate did `if (!isValid)` on the whole
+//   validateToken() result object (`{valid, user?}`), which is never falsy,
+//   so an invalid token was added anyway (preferences.html:1080-1084). It now
+//   gates on `validation.valid` and blocks the add on an invalid token.
 export function AccountsPage() {
   const api = useApi();
   const [accounts, setAccounts] = useState<GitLabAccount[]>([]);
@@ -89,12 +83,11 @@ export function AccountsPage() {
     setSubmitting(true);
 
     try {
-      // Gate on the truthiness of the *resolved object*, not `.valid` --
-      // see the parity note above. `validateToken` always resolves an
-      // object, so this is intentionally always false and the call below
-      // always runs, exactly like preferences.html:1080-1084.
-      const isValid = await api.accounts.validateToken(url, token);
-      if (!isValid) {
+      // Bug-lot fix (#4): gate on `.valid`. The vanilla version checked the
+      // truthiness of the whole resolved object (always truthy), so an invalid
+      // token was added anyway (preferences.html:1080-1084).
+      const validation = await api.accounts.validateToken(url, token);
+      if (!validation.valid) {
         showStatus('Invalid token or incorrect URL', 'error');
         return;
       }

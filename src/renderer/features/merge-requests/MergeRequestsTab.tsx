@@ -112,15 +112,16 @@ function NotesPanel({ state, onClose }: { state: NotesPanelState; onClose: () =>
               <div className={styles.noteAuthor}>
                 {/* index.html:2709-2711 -- dedicated markup, not `Avatar`:
                     `.note-author-placeholder` has its own size/font/no
-                    border/no stacking margin, distinct from the mini
-                    avatar stack. Reproduces the same unguarded
-                    `note.author.name[0].toUpperCase()` crash risk as
-                    Avatar's mini size (see Avatar.tsx's doc comment) --
-                    same class of preserved bug, different markup. */}
+                    border/no stacking margin, distinct from the mini avatar
+                    stack. Bug-lot fix (#8): the initial is guarded with '?' so
+                    an empty author name no longer throws (which, with no error
+                    boundary, blanked the whole window). */}
                 {note.author.avatar_url ? (
                   <img src={note.author.avatar_url} alt={note.author.name} />
                 ) : (
-                  <div className={styles.noteAuthorPlaceholder}>{note.author.name[0].toUpperCase()}</div>
+                  <div className={styles.noteAuthorPlaceholder}>
+                    {(note.author.name || '?').charAt(0).toUpperCase()}
+                  </div>
                 )}
                 <span className={styles.noteAuthorName}>{note.author.name}</span>
                 <span className={styles.noteAuthorTime}>{formatTime(note.createdAt)}</span>
@@ -220,10 +221,9 @@ function MemberDropdown({
               ) : (
                 // index.html:2601 -- dedicated inline-styled placeholder,
                 // not a CSS class in the source; reproduced the same way
-                // rather than promoted into the module's stylesheet. Same
-                // unguarded `member.name[0].toUpperCase()` crash risk as
-                // Avatar's mini size and NotesPanel's author placeholder
-                // above.
+                // rather than promoted into the module's stylesheet. Bug-lot
+                // fix (#8): the initial is guarded with '?' so an empty member
+                // name no longer throws.
                 <div
                   style={{
                     width: 22,
@@ -239,7 +239,7 @@ function MemberDropdown({
                     flexShrink: 0,
                   }}
                 >
-                  {member.name[0].toUpperCase()}
+                  {(member.name || '?').charAt(0).toUpperCase()}
                 </div>
               )}
               <div className={styles.memberInfo}>

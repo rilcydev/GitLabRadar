@@ -34,7 +34,7 @@ function makeCommit(overrides: Partial<UntagCommit> = {}): UntagCommit {
 
 function makeProject(overrides: Partial<UntagProject> = {}): UntagProject {
   const id = nextId++;
-  return {
+  const base: UntagProject = {
     projectId: id,
     projectName: `project-${id}`,
     projectPath: `group/project-${id}`,
@@ -48,6 +48,11 @@ function makeProject(overrides: Partial<UntagProject> = {}): UntagProject {
     accountId: 'acc-1',
     ...overrides,
   };
+  // The untag row renders projectPath (#3 fix). Default it to projectName so
+  // tests that set only a name still find the row by that name; an explicit
+  // projectPath override still wins.
+  if (overrides.projectPath === undefined) base.projectPath = base.projectName;
+  return base;
 }
 
 async function pushUntag(
@@ -100,20 +105,17 @@ describe('UntagTab', () => {
     expect(container.querySelector('#untag-list')).not.toBeNull();
   });
 
-  // PRESERVED BUG, not a regression: index.html:3765/:3715 shows
-  // `project.projectName`, not `project.projectPath`. Showing the full path
-  // is a feature scoped to the post-migration follow-up lot (plan's
-  // preserved-bug list, #3). Reproduced literally -- see
-  // UntagProjectRow.tsx's doc comment. Do NOT "fix" this by switching to
-  // projectPath; that would break parity with the vanilla app.
-  it('shows projectName, not the full projectPath -- preserved bug, deliberate for this phase (index.html:3715,3765)', async () => {
+  // Bug-lot fix (#3): the untag row now shows the full `projectPath`, not just
+  // the short `projectName`, so two same-named projects in different groups are
+  // distinguishable (matches the search-result behaviour).
+  it('shows the full projectPath, not just the short projectName (bug-lot fix #3)', async () => {
     const { emit } = renderTab();
     await pushUntag(emit, [
       makeProject({ projectName: 'short-name', projectPath: 'some-group/some-subgroup/short-name' }),
     ]);
 
-    expect(await screen.findByText('short-name')).toBeInTheDocument();
-    expect(screen.queryByText('some-group/some-subgroup/short-name')).not.toBeInTheDocument();
+    expect(await screen.findByText('some-group/some-subgroup/short-name')).toBeInTheDocument();
+    expect(screen.queryByText('short-name')).not.toBeInTheDocument();
   });
 
   // index.html:3768 -- `+${commitsAhead} ${commitsLabel}`.
