@@ -1,18 +1,11 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { TrayStatus } from '@/shared/api/contract';
 import type { MergeRequest, Pipeline, Release, UntagProject } from '@/shared/types';
 // Relative import: eslint's import/no-unresolved has no TS-aware resolver
 // for the `@/*` alias on value imports (see src/test/renderWithApi.tsx and
 // src/renderer/api/FakeApi.ts for the same pre-existing gap).
 import { useApi } from '../../api/ApiContext';
+import { createDismissalContext } from './createDismissalContext';
 
 export interface Data {
   mergeRequests: MergeRequest[];
@@ -67,80 +60,68 @@ const initialData: Data = {
 
 const DataContext = createContext<Data | null>(null);
 
-// Added in Task 15. index.html keeps `dismissedMRIds` as a single
-// module-level array (index.html:2334, loaded by loadDismissedMRs at
-// :2443-2452) that BOTH the mrCount badge computation (index.html:2463-2466)
-// and renderMRs' own filtering/list (index.html:2463,2542-2553,2758-2768)
-// read and mutate directly, since they are the same script scope. In React,
-// MenubarApp (the badge) and MergeRequestsTab (the list) are siblings, not
-// parent/child, so that shared mutable array has to live somewhere both can
-// reach -- DataProvider, the nearest common ancestor already wrapping both
-// in main.tsx, is that place. Deliberately a SEPARATE context from
+// Added in Task 15, generalized in Task 16 onto `createDismissalContext`.
+// index.html keeps `dismissedMRIds` as a single module-level array
+// (index.html:2334, loaded by loadDismissedMRs at :2443-2452) that BOTH the
+// mrCount badge computation (index.html:2463-2466) and renderMRs' own
+// filtering/list (index.html:2463,2542-2553,2758-2768) read and mutate
+// directly, since they are the same script scope. In React, MenubarApp (the
+// badge) and MergeRequestsTab (the list) are siblings, not parent/child, so
+// that shared mutable array has to live somewhere both can reach --
+// DataProvider, the nearest common ancestor already wrapping both in
+// main.tsx, is that place. Deliberately a SEPARATE context from
 // `DataContext` (not folded into `Data`) so `useData()`'s contract stays
-// pure data with no mutator functions mixed in.
-interface MRDismissalContextValue {
-  dismissedMRIds: number[];
-  // index.html:2542-2553 (dismiss) -- awaits the IPC call, then appends
-  // the id locally, matching `dismissedMRIds.push(mrId)` exactly (not a
-  // re-fetch of config).
-  dismissMR: (id: number) => Promise<void>;
+// pure data with no mutator functions mixed in. Task 16 adds the pipeline
+// equivalent right below, both built on the same factory; Task 17 will add
+// a third for releases.
+const mrDismissalContext = createDismissalContext({
+  configKey: 'dismissedMRs',
+  errorLabel: 'MRs',
+  hookName: 'useMRDismissal',
+  // index.html:2542-2553 (dismiss) -- awaits the IPC call, then appends the
+  // id locally, matching `dismissedMRIds.push(mrId)` exactly (not a re-fetch
+  // of config).
+  dismiss: (api, id) => api.gitlab.dismissMR(id),
   // index.html:2758-2768 ("Show all") -- awaits the IPC call, then resets
   // the local list to empty, matching `dismissedMRIds = []`.
-  restoreMRs: () => Promise<void>;
+  restore: (api) => api.gitlab.restoreMRs(),
+});
+
+/**
+ * `dismissedMRIds`/`dismissMR`/`restoreMRs` are the factory's generic
+ * `dismissedIds`/`dismiss`/`restore` under MR-specific names -- kept
+ * identical to Task 15's original hand-written shape so
+ * `MergeRequestsTab.tsx` (and its tests) don't have to change at all.
+ */
+export function useMRDismissal(): { dismissedMRIds: number[]; dismissMR: (id: number) => Promise<void>; restoreMRs: () => Promise<void> } {
+  const { dismissedIds, dismiss, restore } = mrDismissalContext.useDismissal();
+  return { dismissedMRIds: dismissedIds, dismissMR: dismiss, restoreMRs: restore };
 }
 
-const MRDismissalContext = createContext<MRDismissalContextValue | null>(null);
+// index.html:2883, loaded by loadDismissedPipelines at :2885-2894. Same
+// reasoning as `mrDismissalContext` above -- MenubarApp's `#pipelineCount`
+// badge and PipelinesTab's list both need it (see task-16-report.md for the
+// badge fix this mirrors from task-15-report.md's mrCount one).
+const pipelineDismissalContext = createDismissalContext({
+  configKey: 'dismissedPipelines',
+  errorLabel: 'pipelines',
+  hookName: 'usePipelineDismissal',
+  // index.html:3070-3080 (dismiss) -- `await gitlab.dismissPipeline(id);
+  // dismissedPipelineIds.push(id);`.
+  dismiss: (api, id) => api.gitlab.dismissPipeline(id),
+  // index.html:3082-3092 ("Show all") -- `await gitlab.restorePipelines();
+  // dismissedPipelineIds = [];`.
+  restore: (api) => api.gitlab.restorePipelines(),
+});
 
-export function useMRDismissal(): MRDismissalContextValue {
-  const ctx = useContext(MRDismissalContext);
-  if (!ctx) throw new Error('useMRDismissal must be used within a DataProvider');
-  return ctx;
+export function usePipelineDismissal(): { dismissedPipelineIds: number[]; dismissPipeline: (id: number) => Promise<void>; restorePipelines: () => Promise<void> } {
+  const { dismissedIds, dismiss, restore } = pipelineDismissalContext.useDismissal();
+  return { dismissedPipelineIds: dismissedIds, dismissPipeline: dismiss, restorePipelines: restore };
 }
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const api = useApi();
   const [data, setData] = useState<Data>(initialData);
-  const [dismissedMRIds, setDismissedMRIds] = useState<number[]>([]);
-
-  // index.html:2443-2452 (loadDismissedMRs), invoked as part of init()'s
-  // Promise.all (index.html:3961-3967) -- independent of loadData's own
-  // fetch, so it gets its own effect rather than being folded into the one
-  // below.
-  useEffect(() => {
-    let cancelled = false;
-    async function loadDismissedMRs() {
-      try {
-        const config = await api.config.getAll();
-        if (cancelled) return;
-        setDismissedMRIds(config.dismissedMRs || []);
-      } catch (err) {
-        // index.html:2449-2450
-        console.error('Error loading dismissed MRs:', err);
-      }
-    }
-    void loadDismissedMRs();
-    return () => {
-      cancelled = true;
-    };
-  }, [api]);
-
-  const dismissMR = useCallback(
-    async (id: number) => {
-      await api.gitlab.dismissMR(id);
-      setDismissedMRIds((prev) => [...prev, id]);
-    },
-    [api]
-  );
-
-  const restoreMRs = useCallback(async () => {
-    await api.gitlab.restoreMRs();
-    setDismissedMRIds([]);
-  }, [api]);
-
-  const mrDismissal = useMemo<MRDismissalContextValue>(
-    () => ({ dismissedMRIds, dismissMR, restoreMRs }),
-    [dismissedMRIds, dismissMR, restoreMRs]
-  );
 
   useEffect(() => {
     let cancelled = false;
@@ -275,9 +256,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [api]);
 
   return (
-    <MRDismissalContext.Provider value={mrDismissal}>
-      <DataContext.Provider value={data}>{children}</DataContext.Provider>
-    </MRDismissalContext.Provider>
+    <mrDismissalContext.DismissalProvider>
+      <pipelineDismissalContext.DismissalProvider>
+        <DataContext.Provider value={data}>{children}</DataContext.Provider>
+      </pipelineDismissalContext.DismissalProvider>
+    </mrDismissalContext.DismissalProvider>
   );
 }
 

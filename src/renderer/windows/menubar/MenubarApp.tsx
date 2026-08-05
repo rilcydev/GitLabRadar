@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 // components for the same pre-existing gap).
 import { useApi } from '../../api/ApiContext';
 import { MergeRequestsTab } from '../../features/merge-requests/MergeRequestsTab';
-import { useData, useMRDismissal } from './DataProvider';
+import { PipelinesTab } from '../../features/pipelines/PipelinesTab';
+import { useData, useMRDismissal, usePipelineDismissal } from './DataProvider';
 import styles from './MenubarApp.module.css';
 
 export type ViewMode = 'developer' | 'productOwner';
@@ -82,6 +83,7 @@ export function MenubarApp() {
   const api = useApi();
   const data = useData();
   const { dismissedMRIds } = useMRDismissal();
+  const { dismissedPipelineIds } = usePipelineDismissal();
   const viewMode = useViewMode();
   const [activeTab, setActiveTab] = useState<TabId>('mrs');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -104,7 +106,12 @@ export function MenubarApp() {
   // was reachable; fixed here rather than left to drift further. See
   // task-15-report.md.
   const mrCount = data.mergeRequests.filter((mr) => !dismissedMRIds.includes(mr.id)).length;
-  const pipelineCount = data.pipelines.length;
+  // Fix (Task 16, mirroring Task 15's mrCount fix): this badge used to be
+  // raw `data.pipelines.length`, but index.html:2902-2905 computes
+  // `pipelineCount.textContent` from `visiblePipelines.length` --
+  // `pipelines` filtered to exclude dismissed ids -- not the raw
+  // collection. See task-16-report.md.
+  const pipelineCount = data.pipelines.filter((p) => !dismissedPipelineIds.includes(p.id)).length;
   const releaseCount = data.releases.length;
   const untagCount = data.untagProjects.length;
 
@@ -180,7 +187,9 @@ export function MenubarApp() {
               className={
                 activeTab === 'pipelines' ? `${styles.tabContent} ${styles.tabContentActive}` : styles.tabContent
               }
-            />
+            >
+              <PipelinesTab />
+            </div>
             <div
               id="releases-content"
               className={

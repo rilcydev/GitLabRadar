@@ -1,0 +1,74 @@
+/*
+ * Ported from src/renderer/index.html: the `.dismissed-notice` rules
+ * (:660-688) and "LOADING STATE" (:1749-1778). `.empty-state` itself is
+ * `EmptyState`'s (Task 14); `.item`/etc. are `ItemCard`'s/`PipelineRow`'s.
+ *
+ * --bg-card has no bare form (Task 6 token rule) -- this is the menubar
+ * window, so the -menubar variant is used.
+ */
+
+/* ═══════════════════════════════════════════
+   LOADING STATE -- index.html:1752-1778
+   ═══════════════════════════════════════════ */
+.loadingState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.loadingSpinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--glass-border);
+  border-top-color: var(--accent-purple);
+  border-radius: 50%;
+  animation: loading-spin 0.8s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loadingText {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* ═══════════════════════════════════════════
+   DISMISSED NOTICE -- index.html:660-688
+   ═══════════════════════════════════════════ */
+.dismissedNotice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--bg-card-menubar);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.dismissedNotice button {
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.dismissedNotice button:hover {
+  background: var(--bg-card-hover-menubar);
+  border-color: var(--accent-purple);
+}

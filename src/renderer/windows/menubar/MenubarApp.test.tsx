@@ -174,6 +174,51 @@ describe('MenubarApp', () => {
     await waitFor(() => expect(screen.getByTestId('mr-count')).toHaveTextContent('1'));
   });
 
+  // Fix (Task 16, mirroring Task 15's mrCount fix): index.html:2902-2905
+  // computes `#pipelineCount` from `visiblePipelines.length` (dismissed ids
+  // filtered out), not the raw `pipelines` collection -- this badge used to
+  // use the raw length. Proven end-to-end here for the same reason as the
+  // mrCount test above: the badge and the Pipelines tab share
+  // `dismissedPipelineIds` via `usePipelineDismissal`.
+  it('the pipelineCount badge excludes a dismissed pipeline immediately after dismissal', async () => {
+    const pipeline = (id: number) =>
+      ({
+        id,
+        status: 'success',
+        ref: 'main',
+        sha: 'abc123',
+        webUrl: `https://gitlab.example.com/pipelines/${id}`,
+        projectId: 100,
+        projectName: 'Project',
+        projectPath: 'group/project',
+        accountId: 'acc-1',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        source: 'push',
+      }) as unknown as Pipeline;
+
+    const dismissPipeline = vi.fn().mockResolvedValue(undefined);
+    const { emit } = renderMenubar({ overrides: { gitlab: { dismissPipeline } } });
+
+    act(() =>
+      emit.dataUpdated({
+        mergeRequests: [],
+        pipelines: [pipeline(1), pipeline(2)],
+        releases: [],
+        status: 'green',
+        lastUpdated: new Date('2026-08-04T12:00:00Z'),
+      })
+    );
+
+    expect(await screen.findByTestId('pipeline-count')).toHaveTextContent('2');
+
+    await userEvent.click(screen.getByText('Pipelines'));
+    await userEvent.click(screen.getAllByTitle('Hide this pipeline')[0]);
+
+    expect(dismissPipeline).toHaveBeenCalledWith(1);
+    await waitFor(() => expect(screen.getByTestId('pipeline-count')).toHaveTextContent('1'));
+  });
+
   it('shows "No activity" in the header subtitle when every dataset is empty', async () => {
     renderMenubar();
     expect(screen.getByText('No activity')).toBeInTheDocument();
