@@ -4,7 +4,7 @@ import { accounts } from '../store/accounts';
 import { config } from '../store/config';
 import { getGitLabClient, clearClientCache } from '../api/gitlab';
 import { enrichApprovals } from '../api/approvals';
-import { checkNewMRs, checkPipelineStatusChange, cleanNotificationCache } from './notifications';
+import { checkNewMRs, checkNewApprovals, checkPipelineStatusChange, cleanNotificationCache } from './notifications';
 
 export type TrayStatus = 'green' | 'orange' | 'red' | 'gray';
 
@@ -213,6 +213,7 @@ class PollingService {
       }
 
       checkNewMRs(this.lastData.mergeRequests, allMergeRequests);
+      checkNewApprovals(this.lastData.mergeRequests, allMergeRequests);
       checkPipelineStatusChange(this.lastData.pipelines, allPipelines);
 
       console.log('Pipelines to display:', allPipelines.map(p => ({

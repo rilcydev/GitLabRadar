@@ -1,10 +1,12 @@
 import { Notification, shell } from 'electron';
-import { MergeRequest, Pipeline } from '../../shared/types';
+import { MergeRequest, Pipeline, MergeRequestAuthor } from '../../shared/types';
 import { config } from '../store/config';
+import { diffApprovers } from '../api/approvals';
 
 // Cache to avoid duplicate notifications
 const notifiedMRs = new Set<string>();
 const notifiedPipelines = new Set<string>();
+const notifiedApprovals = new Set<string>();
 
 function getNotificationConfig() {
   return config.get('notifications');
@@ -185,6 +187,38 @@ export function checkNewMRs(oldMRs: MergeRequest[], newMRs: MergeRequest[]): voi
   }
 }
 
+export function notifyMRApproved(mr: MergeRequest, approver: MergeRequestAuthor): void {
+  const notifConfig = getNotificationConfig();
+  if (!notifConfig.enabled || !notifConfig.mrApproved) return;
+
+  const key = `mr-approved-${mr.id}-${approver.id}`;
+  if (notifiedApprovals.has(key)) return;
+
+  const notification = new Notification({
+    title: 'MR approved',
+    body: `${approver.name} approved: ${mr.title}`,
+    silent: false,
+  });
+
+  notification.on('click', () => {
+    shell.openExternal(mr.webUrl);
+  });
+
+  showNotification(notification, 'MR approved');
+  notifiedApprovals.add(key);
+}
+
+export function checkNewApprovals(oldMRs: MergeRequest[], newMRs: MergeRequest[]): void {
+  const oldMap = new Map(oldMRs.map((mr) => [mr.id, mr]));
+  for (const mr of newMRs) {
+    if (mr.userRole !== 'author') continue;
+    const prev = oldMap.get(mr.id);
+    for (const approver of diffApprovers(prev?.approvedBy ?? [], mr.approvedBy)) {
+      notifyMRApproved(mr, approver);
+    }
+  }
+}
+
 // Clean cache periodically (keep only the last 1000 entries)
 export function cleanNotificationCache(): void {
   if (notifiedMRs.size > 1000) {
@@ -195,10 +229,15 @@ export function cleanNotificationCache(): void {
     const entries = Array.from(notifiedPipelines);
     entries.slice(0, entries.length - 500).forEach((key) => notifiedPipelines.delete(key));
   }
+  if (notifiedApprovals.size > 1000) {
+    const entries = Array.from(notifiedApprovals);
+    entries.slice(0, entries.length - 500).forEach((key) => notifiedApprovals.delete(key));
+  }
 }
 
 // Reset cache (useful for tests)
 export function resetNotificationCache(): void {
   notifiedMRs.clear();
   notifiedPipelines.clear();
+  notifiedApprovals.clear();
 }
