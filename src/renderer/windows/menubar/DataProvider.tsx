@@ -72,8 +72,10 @@ const DataContext = createContext<Data | null>(null);
 // main.tsx, is that place. Deliberately a SEPARATE context from
 // `DataContext` (not folded into `Data`) so `useData()`'s contract stays
 // pure data with no mutator functions mixed in. Task 16 adds the pipeline
-// equivalent right below, both built on the same factory; Task 17 will add
-// a third for releases.
+// equivalent right below; Task 17 adds the release one further down (also
+// used to fix MenubarApp's `#releaseCount` badge, which mirrors the same
+// mrCount/pipelineCount fix Tasks 15/16 made), all three built on the same
+// factory.
 const mrDismissalContext = createDismissalContext({
   configKey: 'dismissedMRs',
   errorLabel: 'MRs',
@@ -117,6 +119,27 @@ const pipelineDismissalContext = createDismissalContext({
 export function usePipelineDismissal(): { dismissedPipelineIds: number[]; dismissPipeline: (id: number) => Promise<void>; restorePipelines: () => Promise<void> } {
   const { dismissedIds, dismiss, restore } = pipelineDismissalContext.useDismissal();
   return { dismissedPipelineIds: dismissedIds, dismissPipeline: dismiss, restorePipelines: restore };
+}
+
+// index.html:3111, loaded by loadDismissedReleases at :3113-3122. The third
+// (and last) of the three structurally identical dismissal collections --
+// see createDismissalContext.tsx's doc comment. This is the one Task 16's
+// comments above flagged as still owed to Task 17.
+const releaseDismissalContext = createDismissalContext({
+  configKey: 'dismissedReleases',
+  errorLabel: 'releases',
+  hookName: 'useReleaseDismissal',
+  // index.html:3272-3283 (dismiss) -- `await gitlab.dismissRelease(releaseId);
+  // dismissedReleaseIds.push(releaseId);`.
+  dismiss: (api, id) => api.gitlab.dismissRelease(id),
+  // index.html:3285-3295 ("Show all") -- `await gitlab.restoreReleases();
+  // dismissedReleaseIds = [];`.
+  restore: (api) => api.gitlab.restoreReleases(),
+});
+
+export function useReleaseDismissal(): { dismissedReleaseIds: number[]; dismissRelease: (id: number) => Promise<void>; restoreReleases: () => Promise<void> } {
+  const { dismissedIds, dismiss, restore } = releaseDismissalContext.useDismissal();
+  return { dismissedReleaseIds: dismissedIds, dismissRelease: dismiss, restoreReleases: restore };
 }
 
 export function DataProvider({ children }: { children: ReactNode }) {
@@ -258,7 +281,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
   return (
     <mrDismissalContext.DismissalProvider>
       <pipelineDismissalContext.DismissalProvider>
-        <DataContext.Provider value={data}>{children}</DataContext.Provider>
+        <releaseDismissalContext.DismissalProvider>
+          <DataContext.Provider value={data}>{children}</DataContext.Provider>
+        </releaseDismissalContext.DismissalProvider>
       </pipelineDismissalContext.DismissalProvider>
     </mrDismissalContext.DismissalProvider>
   );

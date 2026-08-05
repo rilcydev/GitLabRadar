@@ -1,0 +1,346 @@
+/*
+ * Ported from src/renderer/index.html: "SECTIONS" (:390-437, just `.section`'s
+ * own margin -- `SectionHeader` owns the header row itself), the "ITEMS"
+ * block's non-`ItemCard` parts (:442-658 -- `.item-icon`, `.item-content`,
+ * `.item-title`, `.item-subtitle`, `.item-time`, `.item-dismiss`), "RELEASES"
+ * (:1040-1146), the "LOADING STATE" (:1752-1778) and `.dismissed-notice`
+ * (:660-688) blocks (duplicated per-tab, same as PipelinesTab.module.css),
+ * and the "Configure projects" button (`.btn`, not located elsewhere in this
+ * file tree yet, so reproduced inline here -- see `.btn`'s own comment).
+ *
+ * --bg-card, --bg-base have no bare form (Task 6 token rule) -- this is the
+ * menubar window, so the -menubar variants are used throughout.
+ */
+
+/* ═══════════════════════════════════════════
+   LOADING STATE -- index.html:1752-1778
+   ═══════════════════════════════════════════ */
+.loadingState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.loadingSpinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--glass-border);
+  border-top-color: var(--accent-purple);
+  border-radius: 50%;
+  animation: loading-spin 0.8s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loadingText {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* ═══════════════════════════════════════════
+   DISMISSED NOTICE -- index.html:660-688
+   ═══════════════════════════════════════════ */
+.dismissedNotice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--bg-card-menubar);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.dismissedNotice button {
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.dismissedNotice button:hover {
+  background: var(--bg-card-hover-menubar);
+  border-color: var(--accent-purple);
+}
+
+/* ═══════════════════════════════════════════
+   "Configure projects" BUTTON -- index.html:2271 (`.btn`, defined generically
+   further up in index.html and reused verbatim across all five empty
+   states -- MergeRequestsTab.module.css already carries its own copy for
+   `#addAccountBtn`; this is that same rule reproduced again here, matching
+   the source's own single shared `.btn` class).
+   ═══════════════════════════════════════════ */
+.btn {
+  padding: 10px 20px;
+  background: var(--gradient-purple);
+  border: none;
+  border-radius: var(--radius-md);
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 8px;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px var(--accent-purple-glow);
+}
+
+/* ═══════════════════════════════════════════
+   SECTION -- index.html:393-395 (the header row itself is SectionHeader's)
+   ═══════════════════════════════════════════ */
+.section {
+  margin-bottom: 20px;
+}
+
+/* index.html:1043-1045. `position: relative` here is redundant with
+   `ItemCard`'s own `.item` rule (which already sets it, for its `::before`
+   accent bar) but reproduces the source's own rule literally. This class's
+   real purpose is to be a same-module hover anchor for `.itemDismiss`'s
+   `:hover` rule below; see ReleasesTab.tsx's `ReleaseRow` doc comment for
+   why a bare `.item` selector here can't work. */
+.releaseItem {
+  position: relative;
+}
+
+/* ═══════════════════════════════════════════
+   ITEM ICON -- index.html:478-524,1047-1055
+   ═══════════════════════════════════════════ */
+.itemIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.itemIcon svg {
+  width: 20px;
+  height: 20px;
+  fill: white;
+}
+
+/* index.html:1047-1055 -- release's icon is both a different background
+   AND a smaller (18px, not 20px) svg than the base `.item-icon` above; the
+   svg-size override below must stay AFTER the base `.itemIcon svg` rule so
+   it wins the same-specificity tie by source order, the same way
+   `.item-icon.release svg`'s higher-specificity selector wins in the
+   source regardless of declaration order. */
+.itemIconRelease {
+  background: var(--gradient-green);
+  box-shadow: 0 4px 12px var(--accent-green-glow);
+}
+
+.itemIconRelease svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* ═══════════════════════════════════════════
+   ITEM CONTENT / TITLE / SUBTITLE -- index.html:526-551
+   ═══════════════════════════════════════════ */
+.itemContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.itemTitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+  letter-spacing: -0.2px;
+}
+
+.itemSubtitle {
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ═══════════════════════════════════════════
+   ITEM TIME -- index.html:620-626
+   ═══════════════════════════════════════════ */
+.itemTime {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-top: 2px;
+}
+
+/* ═══════════════════════════════════════════
+   DISMISS BUTTON -- index.html:628-658
+   Unlike MergeRequestRow's/PipelineRow's (index.html:2841,3027), the release
+   dismiss button has NO inline `style="opacity: 0.5"` (index.html:3248-3250)
+   -- so, unlike those two, the `:hover` rule below is NOT dead: it is what
+   actually fades this button in on `.item:hover`, reproducing the base
+   behaviour those two override away. See ReleasesTab.tsx's `ReleaseRow` doc
+   comment and ReleasesTab.test.tsx's pinning test.
+   ═══════════════════════════════════════════ */
+.itemDismiss {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.releaseItem:hover .itemDismiss {
+  opacity: 1;
+}
+
+.itemDismiss:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--accent-red);
+}
+
+.itemDismiss svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
+/* ═══════════════════════════════════════════
+   RELEASE TAG -- index.html:1138-1146
+   ═══════════════════════════════════════════ */
+.releaseTag {
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 11px;
+  background: rgba(139, 92, 246, 0.15);
+  color: var(--accent-purple);
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+/* ═══════════════════════════════════════════
+   RELEASE DEPLOYMENT -- index.html:1057-1137
+   ═══════════════════════════════════════════ */
+.releaseDeployment {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--glass-border);
+}
+
+.releaseDeploymentRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.deploymentTrigger {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+.deploymentTime {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.deploymentBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.deploymentBadgeSuccess {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--accent-green);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.deploymentBadgeRunning {
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--accent-blue);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.deploymentBadgeFailed {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--accent-red);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* index.html:1112-1117 -- `.deployment-badge.created, .deployment-badge.pending`
+   share this rule; `Deployment.status` (src/shared/types/release.ts) has no
+   `'pending'` member, so only `created` is reachable here -- reproduced
+   with just the one class, not an unreachable `deploymentBadgePending`.
+   NOTE: there is no `.deployment-badge.canceled` rule anywhere in the
+   source (verified -- only success/running/failed/created+pending/none are
+   defined), so a canceled deployment's badge deliberately falls back to the
+   unstyled base `.deploymentBadge` above, the same way PipelineRow's
+   canceled status tag falls back to its unstyled base (see
+   PipelineRow.module.css's identical note). No `deploymentBadgeCanceled`
+   class exists here on purpose. */
+.deploymentBadgeCreated {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--accent-orange);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.deploymentBadgeNone {
+  background: var(--bg-card-menubar);
+  color: var(--text-tertiary);
+  border: 1px solid var(--glass-border);
+}
+
+.deploymentBadge svg {
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
+}
+
+.deploymentEnv {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}

@@ -1,17 +1,18 @@
 /*
  * Ported from src/renderer/index.html (the vanilla menubar window Task 19
- * replaces -- see the header rules at :118-227, the tabs rules at :228-307,
- * and the content rules at :348-388, including its custom scrollbar at
- * :359-374). Literal values are replaced with
+ * replaces -- see the header rules at :118-227, the profile-nav rules at
+ * :309-346, the tabs rules at :228-307, the content rules at :348-388
+ * (including its custom scrollbar at :359-374), and the footer rules at
+ * :786-858). Literal values are replaced with
  * var(--…) references into src/renderer/styles/tokens.css. Per the token
  * binding rule established in Task 6: a bare token name is identical in
  * both windows; the six split tokens (--bg-base, --bg-elevated, --bg-card,
  * --bg-card-hover, --shadow-md, --gradient-mesh) have no bare form and this
  * window always takes the `-menubar` variant.
  *
- * The profile-nav (Developer/Product Owner toggle, index.html:312-346) and
- * the footer (index.html:786-858) are NOT ported here -- see
- * task-13-report.md for why both are out of this task's scope.
+ * The profile-nav and footer were deferred by Task 13 (see
+ * task-13-report.md for why) to Task 17, which adds both here alongside the
+ * view-mode setter that makes the profile-nav toggle live.
  */
 
 /* ═══════════════════════════════════════════
@@ -156,6 +157,47 @@
 }
 
 /* ═══════════════════════════════════════════
+   PROFILE NAV (Developer / Product Owner) -- index.html:309-346
+═══════════════════════════════════════════ */
+.profileNav {
+  display: flex;
+  padding: 8px 20px 12px;
+  gap: 6px;
+  background: var(--bg-elevated-menubar);
+  border-bottom: 1px solid var(--glass-border);
+  flex-shrink: 0;
+}
+
+.profileNavItem {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 14px;
+  background: var(--bg-card-menubar);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.profileNavItem:hover {
+  background: var(--bg-card-hover-menubar);
+  color: var(--text-primary);
+  border-color: rgba(139, 92, 246, 0.3);
+}
+
+.profileNavItemActive {
+  background: transparent;
+  border-color: var(--accent-purple);
+  color: var(--accent-purple);
+  box-shadow:
+    0 0 0 1px var(--accent-purple),
+    0 0 16px var(--accent-purple-glow);
+}
+
+/* ═══════════════════════════════════════════
    TABS (index.html:228-307)
 ═══════════════════════════════════════════ */
 .tabs {
@@ -285,4 +327,98 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* ═══════════════════════════════════════════
+   FOOTER -- index.html:786-858
+═══════════════════════════════════════════ */
+.footer {
+  padding: 14px 20px;
+  background: var(--bg-elevated-menubar);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--glass-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.footerStatus {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.statusIndicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  position: relative;
+}
+
+.statusDot::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: inherit;
+  opacity: 0.3;
+  animation: statusPulse 2s ease-in-out infinite;
+}
+
+@keyframes statusPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+.statusDotConnected {
+  background: var(--accent-green);
+}
+
+.statusDotError {
+  background: var(--accent-red);
+}
+
+.statusDotOffline {
+  background: var(--text-muted);
+}
+
+.statusDotOffline::after {
+  display: none;
+}
+
+.statusText {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.footerLink {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent-purple);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid transparent;
+}
+
+.footerLink:hover {
+  background: rgba(139, 92, 246, 0.2);
+  border-color: rgba(139, 92, 246, 0.3);
 }

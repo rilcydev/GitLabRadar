@@ -5,27 +5,39 @@ import { useCallback, useEffect, useState } from 'react';
 import { useApi } from '../../api/ApiContext';
 import { MergeRequestsTab } from '../../features/merge-requests/MergeRequestsTab';
 import { PipelinesTab } from '../../features/pipelines/PipelinesTab';
-import { useData, useMRDismissal, usePipelineDismissal } from './DataProvider';
+import { POView } from '../../features/releases/POView';
+import { ReleasesTab } from '../../features/releases/ReleasesTab';
+import { useData, useMRDismissal, usePipelineDismissal, useReleaseDismissal } from './DataProvider';
 import styles from './MenubarApp.module.css';
 
 export type ViewMode = 'developer' | 'productOwner';
 
-// index.html:2333, :3927-3937 (loadViewMode). The vanilla app reads this
-// once from config at startup and again inside the data:updated handler (in
-// case it changed from the preferences window) -- Task 13 only needs the
-// read side; there is no setter here because nothing in this task's scope
-// (the profile-nav Developer/Product Owner toggle) writes it yet. See
-// task-13-report.md for why the toggle itself is out of scope.
-export function useViewMode(): ViewMode {
+export interface ViewModeControls {
+  viewMode: ViewMode;
+  /**
+   * index.html:2383-2396. No-op if `mode` already matches the current
+   * value; otherwise updates local state FIRST (synchronously, like the
+   * source's `viewMode = mode;`), then persists via `config.set`. The
+   * source's `updateProfileNavUI()`/`applyViewMode()` calls that follow are
+   * both imperative re-renders of exactly the state this setter already
+   * just changed -- in React, whatever reads `viewMode` (MenubarApp's own
+   * JSX below) re-renders automatically, so there is nothing further to
+   * call.
+   */
+  setViewMode: (mode: ViewMode) => Promise<void>;
+}
+
+// index.html:2333, :3927-3937 (loadViewMode).
+export function useViewMode(): ViewModeControls {
   const api = useApi();
-  const [viewMode, setViewMode] = useState<ViewMode>('developer');
+  const [viewMode, setViewModeState] = useState<ViewMode>('developer');
 
   useEffect(() => {
     let cancelled = false;
     async function loadViewMode() {
       try {
         const vm = await api.config.get('viewMode');
-        if (!cancelled) setViewMode(vm || 'developer');
+        if (!cancelled) setViewModeState(vm || 'developer');
       } catch (err) {
         // index.html:3933-3934
         console.error('Error loading viewMode:', err);
@@ -37,7 +49,20 @@ export function useViewMode(): ViewMode {
     };
   }, [api]);
 
-  return viewMode;
+  const setViewMode = useCallback(
+    async (mode: ViewMode) => {
+      if (viewMode === mode) return; // index.html:2384
+      setViewModeState(mode); // index.html:2385
+      try {
+        await api.config.set('viewMode', mode); // index.html:2387-2389
+      } catch (err) {
+        console.error('Error saving viewMode:', err); // index.html:2390-2391
+      }
+    },
+    [api, viewMode]
+  );
+
+  return { viewMode, setViewMode };
 }
 
 type TabId = 'mrs' | 'pipelines' | 'releases' | 'untag';
@@ -79,12 +104,36 @@ function headerSubtitle(mrCount: number, pipelineCount: number, releaseCount: nu
   return parts.join(' • ');
 }
 
+// index.html:3826-3832 (`updateStatus`). `status` is only ever set to
+// 'connected'/'error' by an explicit call (on loadData/data:updated
+// settling, mirrored by `Data.isLoading` flipping false); before that first
+// settle it stays at the static markup's default, 'offline'
+// (index.html:2316) -- `Data.isLoading` starts `true` for exactly that
+// window, so it stands in for "no updateStatus call has landed yet".
+function statusDotState(isLoading: boolean, error: string | undefined): 'offline' | 'connected' | 'error' {
+  if (isLoading) return 'offline';
+  return error ? 'error' : 'connected';
+}
+
+// index.html:3829 -- `new Date(lastUpdated).toLocaleTimeString('en-US', {
+// hour: '2-digit', minute: '2-digit' })`.
+function formatUpdatedAt(date: Date): string {
+  return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+}
+
+const STATUS_DOT_CLASS: Record<'offline' | 'connected' | 'error', string> = {
+  offline: styles.statusDotOffline,
+  connected: styles.statusDotConnected,
+  error: styles.statusDotError,
+};
+
 export function MenubarApp() {
   const api = useApi();
   const data = useData();
   const { dismissedMRIds } = useMRDismissal();
   const { dismissedPipelineIds } = usePipelineDismissal();
-  const viewMode = useViewMode();
+  const { dismissedReleaseIds } = useReleaseDismissal();
+  const { viewMode, setViewMode } = useViewMode();
   const [activeTab, setActiveTab] = useState<TabId>('mrs');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -112,7 +161,11 @@ export function MenubarApp() {
   // `pipelines` filtered to exclude dismissed ids -- not the raw
   // collection. See task-16-report.md.
   const pipelineCount = data.pipelines.filter((p) => !dismissedPipelineIds.includes(p.id)).length;
-  const releaseCount = data.releases.length;
+  // Fix (Task 17, mirroring Tasks 15/16's mrCount/pipelineCount fixes):
+  // index.html:3130-3133 computes `#releaseCount` from
+  // `visibleReleases.length` -- `releases` filtered to exclude dismissed
+  // ids -- not the raw collection. See task-17-report.md.
+  const releaseCount = data.releases.filter((r) => !dismissedReleaseIds.includes(r.id)).length;
   const untagCount = data.untagProjects.length;
 
   const badgeCounts: Record<TabId, number> = {
@@ -121,6 +174,18 @@ export function MenubarApp() {
     releases: releaseCount,
     untag: untagCount,
   };
+
+  // index.html:3301. Applies unconditionally, regardless of the current
+  // view mode.
+  const profileNavDisplay = data.hasAccounts ? 'flex' : 'none';
+  // index.html:3305,3314.
+  const tabsDisplay = viewMode === 'productOwner' ? 'none' : data.hasAccounts ? 'flex' : 'none';
+  // index.html:376-383,3306-3318. A developer pane is active only in
+  // developer mode AND when it is the selected tab.
+  const isDevPaneActive = (id: TabId) => viewMode === 'developer' && activeTab === id;
+  const paneClass = (active: boolean) => (active ? `${styles.tabContent} ${styles.tabContentActive}` : styles.tabContent);
+
+  const status = statusDotState(data.isLoading, data.error);
 
   return (
     <div className={styles.app}>
@@ -149,64 +214,111 @@ export function MenubarApp() {
         </button>
       </div>
 
-      {viewMode === 'developer' && (
-        <>
-          <div className={styles.tabs}>
-            {TABS.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                className={tab.id === activeTab ? `${styles.tab} ${styles.tabActive}` : styles.tab}
-                onClick={() => setActiveTab(tab.id)}
-              >
-                <span>{tab.label}</span>
-                <span className={styles.tabBadge} id={tab.badgeId} data-testid={tab.testId}>
-                  {badgeCounts[tab.id]}
-                </span>
-              </button>
-            ))}
-          </div>
+      {/* index.html:2204-2208. Always mounted -- applyViewMode
+          (index.html:3301) only ever toggles `style.display`, never removes
+          this from the DOM -- visible whenever an account is configured,
+          regardless of the current view mode. */}
+      <div className={styles.profileNav} id="profileNav" style={{ display: profileNavDisplay }}>
+        <button
+          type="button"
+          className={
+            viewMode === 'developer' ? `${styles.profileNavItem} ${styles.profileNavItemActive}` : styles.profileNavItem
+          }
+          data-profile="developer"
+          id="profileDeveloper"
+          aria-pressed={viewMode === 'developer'}
+          onClick={() => {
+            void setViewMode('developer');
+          }}
+        >
+          Developer
+        </button>
+        <button
+          type="button"
+          className={
+            viewMode === 'productOwner'
+              ? `${styles.profileNavItem} ${styles.profileNavItemActive}`
+              : styles.profileNavItem
+          }
+          data-profile="productOwner"
+          id="profileProductOwner"
+          aria-pressed={viewMode === 'productOwner'}
+          onClick={() => {
+            void setViewMode('productOwner');
+          }}
+        >
+          Product Owner
+        </button>
+      </div>
 
-          <div className={styles.content}>
-            {/* index.html:376-383: `.tab-content` is `display: none` and
-                `.tab-content.active` is `display: block` -- ALL FOUR panes
-                stay mounted at all times and only visibility toggles. Tasks
-                15-18 fill these in; conditionally unmounting the inactive
-                ones here would lose whatever local state those tasks give
-                each pane (scroll position, in-progress input, expanded
-                items, etc.) every time the user switches tabs, which the
-                source never does. */}
-            <div
-              id="mrs-content"
-              className={activeTab === 'mrs' ? `${styles.tabContent} ${styles.tabContentActive}` : styles.tabContent}
-            >
-              <MergeRequestsTab />
-            </div>
-            <div
-              id="pipelines-content"
-              className={
-                activeTab === 'pipelines' ? `${styles.tabContent} ${styles.tabContentActive}` : styles.tabContent
-              }
-            >
-              <PipelinesTab />
-            </div>
-            <div
-              id="releases-content"
-              className={
-                activeTab === 'releases' ? `${styles.tabContent} ${styles.tabContentActive}` : styles.tabContent
-              }
-            />
-            <div
-              id="untag-content"
-              className={activeTab === 'untag' ? `${styles.tabContent} ${styles.tabContentActive}` : styles.tabContent}
-            />
+      {/* index.html:2209-2226. Same "always mounted, display toggled"
+          treatment as profileNav above (index.html:3305,3314) -- not a JSX
+          conditional, so switching modes never unmounts these stateless tab
+          buttons either (though, unlike the panes below, that would be
+          harmless either way since they hold no state of their own). */}
+      <div className={styles.tabs} style={{ display: tabsDisplay }}>
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            className={tab.id === activeTab ? `${styles.tab} ${styles.tabActive}` : styles.tab}
+            onClick={() => setActiveTab(tab.id)}
+          >
+            <span>{tab.label}</span>
+            <span className={styles.tabBadge} id={tab.badgeId} data-testid={tab.testId}>
+              {badgeCounts[tab.id]}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* index.html:2228-2311. All FIVE panes (four developer tabs plus
+          po-content) are permanent DOM siblings; `applyViewMode`/`render*()`
+          only ever move the `active` class (index.html:376-383,3306-3318),
+          never unmount. Switching `viewMode` or `activeTab` therefore only
+          ever changes which pane carries `tabContentActive` -- it can no
+          longer tear down and remount any of Tasks 15-18's per-tab state
+          (scroll position, expanded rows, in-flight requests) the way an
+          earlier `{viewMode === 'developer' && <>...</>}` JSX conditional
+          would have. See MenubarApp.test.tsx's node-identity test, which
+          proves this directly. */}
+      <div className={styles.content}>
+        <div id="mrs-content" className={paneClass(isDevPaneActive('mrs'))}>
+          <MergeRequestsTab />
+        </div>
+        <div id="pipelines-content" className={paneClass(isDevPaneActive('pipelines'))}>
+          <PipelinesTab />
+        </div>
+        <div id="releases-content" className={paneClass(isDevPaneActive('releases'))}>
+          <ReleasesTab />
+        </div>
+        <div id="untag-content" className={paneClass(isDevPaneActive('untag'))} />
+        <div id="po-content" className={paneClass(viewMode === 'productOwner')}>
+          <POView />
+        </div>
+      </div>
+
+      {/* index.html:2313-2321, behaviour in `updateStatus()` at
+          :3826-3832. */}
+      <div className={styles.footer}>
+        <div className={styles.footerStatus}>
+          <div className={styles.statusIndicator}>
+            <span className={`${styles.statusDot} ${STATUS_DOT_CLASS[status]}`} id="statusDot" />
+            <span className={styles.statusText} id="lastUpdate">
+              {data.lastUpdated ? `Updated at ${formatUpdatedAt(data.lastUpdated)}` : 'Not connected'}
+            </span>
           </div>
-        </>
-      )}
-      {/* Product-owner view mode replaces the tab strip entirely rather
-          than adding a fifth tab -- index.html:2291's po-content pane.
-          Built in Task 17; this shell only needs to make room for it. */}
-      {viewMode === 'productOwner' && <div className={styles.content} id="po-content" />}
+        </div>
+        <span
+          className={styles.footerLink}
+          id="prefsLink"
+          onClick={() => {
+            void api.app.showPreferences();
+          }}
+        >
+          Preferences
+        </span>
+      </div>
     </div>
   );
 }

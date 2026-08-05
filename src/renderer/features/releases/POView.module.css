@@ -1,0 +1,363 @@
+/*
+ * Ported from src/renderer/index.html: "LOADING STATE" (:1752-1778,
+ * duplicated per-tab the same way ReleasesTab.module.css/PipelinesTab.module.css
+ * do), the "Configure projects"/"Manage projects" button (`.btn`, same
+ * duplication reasoning as ReleasesTab.module.css's own copy), "RELEASE TAG"
+ * (:1138-1146, duplicated the same way `deploymentBadge*` is -- see below),
+ * and the full "PRODUCT OWNER VIEW" block (:1780-1993).
+ *
+ * `deploymentBadge*`/`deploymentTime` classes are a SEPARATE copy from
+ * ReleasesTab.module.css's identically-named ones -- CSS Modules scope
+ * class names per file, so there is no sharing between the two even though
+ * the values are identical (mirroring vanilla's own two separate
+ * `deploymentIcons`/`deploymentStatusTexts` object literals at
+ * index.html:3195-3201 and :3399-3405).
+ *
+ * --bg-card has no bare form (Task 6 token rule) -- this is the menubar
+ * window, so the -menubar variant is used.
+ */
+
+/* ═══════════════════════════════════════════
+   LOADING STATE -- index.html:1752-1778
+   ═══════════════════════════════════════════ */
+.loadingState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.loadingSpinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--glass-border);
+  border-top-color: var(--accent-purple);
+  border-radius: 50%;
+  animation: loading-spin 0.8s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loadingText {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* ═══════════════════════════════════════════
+   "Configure projects" / "Manage projects" BUTTON -- index.html:2307
+   ═══════════════════════════════════════════ */
+.btn {
+  padding: 10px 20px;
+  background: var(--gradient-purple);
+  border: none;
+  border-radius: var(--radius-md);
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 8px;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px var(--accent-purple-glow);
+}
+
+/* ═══════════════════════════════════════════
+   SECTION -- index.html:393-395
+   ═══════════════════════════════════════════ */
+.section {
+  margin-bottom: 20px;
+}
+
+/* ═══════════════════════════════════════════
+   RELEASE TAG -- index.html:1138-1146
+   ═══════════════════════════════════════════ */
+.releaseTag {
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 11px;
+  background: rgba(139, 92, 246, 0.15);
+  color: var(--accent-purple);
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+/* ═══════════════════════════════════════════
+   DEPLOYMENT BADGE -- index.html:1084-1130. Same values/omissions as
+   ReleasesTab.module.css's copy (no `.deploymentBadgeCanceled` -- the
+   source has no `.deployment-badge.canceled` rule; canceled deployments
+   fall back to this unstyled base).
+   ═══════════════════════════════════════════ */
+.deploymentBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.deploymentBadgeSuccess {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--accent-green);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.deploymentBadgeRunning {
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--accent-blue);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.deploymentBadgeFailed {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--accent-red);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.deploymentBadgeCreated {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--accent-orange);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.deploymentBadgeNone {
+  background: var(--bg-card-menubar);
+  color: var(--text-tertiary);
+  border: 1px solid var(--glass-border);
+}
+
+.deploymentBadge svg {
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
+}
+
+/* index.html:1944-1948 -- `.po-env-grid .deployment-time` overrides the
+   generic `.deployment-time` rule (which POView doesn't otherwise use --
+   ReleasesTab.module.css's own `.deploymentTime` is a DIFFERENT rule, not
+   this one) with a smaller, semi-transparent variant plus a small left
+   margin instead of `margin-left: auto`. */
+.deploymentTime {
+  font-size: 9px;
+  opacity: 0.75;
+  margin-left: 2px;
+}
+
+/* ═══════════════════════════════════════════
+   PRODUCT OWNER VIEW -- index.html:1780-1993
+   ═══════════════════════════════════════════ */
+.poProjectHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-left: 4px;
+}
+
+.poProjectIcon {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: var(--gradient-green);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px var(--accent-green-glow);
+}
+
+.poProjectIcon svg {
+  width: 12px;
+  height: 12px;
+  fill: white;
+}
+
+.poProjectName {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.2px;
+}
+
+.poProjectCount {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.poReleaseItem {
+  padding: 14px 16px;
+  background: var(--bg-card-menubar);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.poReleaseItem::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  background: var(--gradient-green);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.poReleaseItem:hover {
+  background: var(--bg-card-hover-menubar);
+  border-color: rgba(16, 185, 129, 0.2);
+}
+
+.poReleaseItem:hover::before {
+  opacity: 1;
+}
+
+.poReleaseHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.poReleaseTitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+.poReleaseTime {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.poEnvGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  margin-bottom: 6px;
+}
+
+.poReleaseDescription {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-top: 8px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.poReleaseDescription.expanded {
+  -webkit-line-clamp: unset;
+  display: block;
+}
+
+.poReleaseDescription code {
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 11px;
+  background: var(--bg-base-menubar);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.poReleaseDescription strong {
+  color: var(--text-primary);
+}
+
+.poToggleDesc {
+  font-size: 11px;
+  color: var(--accent-purple);
+  cursor: pointer;
+  margin-top: 4px;
+  display: inline-block;
+  font-weight: 500;
+  transition: color 0.15s ease;
+}
+
+.poToggleDesc:hover {
+  color: var(--accent-blue);
+}
+
+.poLoadMore {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  background: var(--bg-card-menubar);
+  border: 1px dashed var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.poLoadMore:hover {
+  background: var(--bg-card-hover-menubar);
+  border-color: var(--accent-purple);
+  color: var(--accent-purple);
+}
+
+.poLoadMore:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.poFilter {
+  margin-bottom: 16px;
+}
+
+.poFilter select {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--bg-card-menubar);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+
+.poFilter select:hover {
+  border-color: rgba(139, 92, 246, 0.3);
+}
+
+.poFilter select:focus {
+  border-color: var(--accent-purple);
+  box-shadow: 0 0 0 3px var(--accent-purple-glow);
+}

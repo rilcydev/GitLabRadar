@@ -257,14 +257,200 @@ describe('MenubarApp', () => {
     expect(refreshCalled).toBe(true);
   });
 
-  it('replaces the tab strip with the po-content pane in product-owner view mode, without adding a fifth tab', async () => {
+  // Fix round 1 (Task 17): the tabs bar used to be entirely UNMOUNTED in
+  // product-owner mode (a JSX conditional wrapping tabs + panes together).
+  // index.html:3305 only ever toggles `tabsBar.style.display`, never
+  // removes it from the DOM -- so the ported version keeps it mounted too
+  // (MenubarApp.tsx's `tabsDisplay`) and this test now asserts the
+  // observable (hidden via `display: none`, not absent) outcome instead of
+  // absence from the document.
+  it('hides (but keeps mounted) the tab strip and activates the po-content pane in product-owner view mode, without adding a fifth tab', async () => {
     const { container } = renderMenubar({
       overrides: { config: { get: async () => 'productOwner' as never } },
     });
 
     await screen.findByText('GitLabBar');
-    expect(container.querySelector('#po-content')).not.toBeNull();
-    expect(screen.queryByText('MRs')).not.toBeInTheDocument();
-    expect(screen.queryByText('Pipelines')).not.toBeInTheDocument();
+    const poContent = container.querySelector('#po-content');
+    expect(poContent).not.toBeNull();
+    expect(poContent).toHaveClass(styles.tabContentActive);
+    expect(container.querySelector('#mrs-content')).not.toHaveClass(styles.tabContentActive);
+
+    // The tab buttons are still IN the document (index.html:3305 never
+    // removes `.tabs` from the DOM), just visually hidden.
+    const tabsBar = screen.getByText('MRs').closest('button')!.parentElement!;
+    expect(tabsBar).toHaveStyle({ display: 'none' });
+  });
+
+  // index.html:2204-2208,2383-2396 -- the profile-nav toggle. Gated on
+  // `hasAccounts` (index.html:3301) regardless of the current view mode.
+  describe('profile nav (Developer / Product Owner toggle)', () => {
+    it('hides the profile nav entirely when no account is configured', async () => {
+      const { container } = renderMenubar({ overrides: { accounts: { getAll: async () => [] } } });
+      await screen.findByText('GitLabBar');
+      expect(container.querySelector('#profileNav')).toHaveStyle({ display: 'none' });
+    });
+
+    it('shows the profile nav, defaulting to Developer active, when an account is configured', async () => {
+      const { container } = renderMenubar({
+        overrides: { accounts: { getAll: async () => [{ id: 'a1' } as never] } },
+      });
+      await screen.findByText('GitLabBar');
+      expect(container.querySelector('#profileNav')).toHaveStyle({ display: 'flex' });
+      expect(container.querySelector('#profileDeveloper')).toHaveClass(styles.profileNavItemActive);
+      expect(container.querySelector('#profileProductOwner')).not.toHaveClass(styles.profileNavItemActive);
+    });
+
+    it('switches to product-owner mode, persists it, and activates po-content when "Product Owner" is clicked', async () => {
+      const configSet = vi.fn().mockResolvedValue(undefined);
+      const { container } = renderMenubar({
+        overrides: {
+          accounts: { getAll: async () => [{ id: 'a1' } as never] },
+          config: { set: configSet },
+        },
+      });
+      await screen.findByText('GitLabBar');
+
+      await userEvent.click(screen.getByText('Product Owner'));
+
+      expect(configSet).toHaveBeenCalledWith('viewMode', 'productOwner');
+      expect(container.querySelector('#profileProductOwner')).toHaveClass(styles.profileNavItemActive);
+      expect(container.querySelector('#po-content')).toHaveClass(styles.tabContentActive);
+      const tabsBar = screen.getByText('MRs').closest('button')!.parentElement!;
+      expect(tabsBar).toHaveStyle({ display: 'none' });
+    });
+
+    it('is a no-op (does not call config.set) when clicking the already-active mode', async () => {
+      const configSet = vi.fn().mockResolvedValue(undefined);
+      renderMenubar({
+        overrides: { accounts: { getAll: async () => [{ id: 'a1' } as never] }, config: { set: configSet } },
+      });
+      await screen.findByText('GitLabBar');
+
+      await userEvent.click(screen.getByText('Developer'));
+
+      expect(configSet).not.toHaveBeenCalled();
+    });
+  });
+
+  // Part 4 of the task-17 brief: proves the restructure from a JSX
+  // conditional to class-only visibility actually holds, by checking DOM
+  // NODE IDENTITY (not just visible content) survives a view-mode toggle --
+  // an unmount/remount would create a brand-new node, failing this
+  // reference-equality check even though the visible markup looks the same.
+  it('does not unmount/remount the developer panes when toggling view mode', async () => {
+    const { container } = renderMenubar({
+      overrides: { accounts: { getAll: async () => [{ id: 'a1' } as never] } },
+    });
+    await screen.findByText('GitLabBar');
+
+    const mrsContentBefore = container.querySelector('#mrs-content');
+    const pipelinesContentBefore = container.querySelector('#pipelines-content');
+    const releasesContentBefore = container.querySelector('#releases-content');
+    expect(mrsContentBefore).not.toBeNull();
+
+    await userEvent.click(screen.getByText('Product Owner'));
+    expect(container.querySelector('#mrs-content')).toBe(mrsContentBefore);
+    expect(container.querySelector('#pipelines-content')).toBe(pipelinesContentBefore);
+    expect(container.querySelector('#releases-content')).toBe(releasesContentBefore);
+
+    await userEvent.click(screen.getByText('Developer'));
+    expect(container.querySelector('#mrs-content')).toBe(mrsContentBefore);
+    expect(container.querySelector('#pipelines-content')).toBe(pipelinesContentBefore);
+    expect(container.querySelector('#releases-content')).toBe(releasesContentBefore);
+  });
+
+  // index.html:2313-2321, updateStatus() at :3826-3832.
+  describe('footer', () => {
+    it('shows "Not connected" and the offline dot before the first successful load/push', async () => {
+      const { container } = renderMenubar();
+      expect(screen.getByText('Not connected')).toBeInTheDocument();
+      expect(container.querySelector('#statusDot')).toHaveClass(styles.statusDotOffline);
+      await screen.findByTestId('mr-count');
+    });
+
+    it('shows "Updated at HH:MM" and the connected dot after data:updated arrives with no error', async () => {
+      const { container, emit } = renderMenubar();
+      act(() =>
+        emit.dataUpdated({
+          mergeRequests: [],
+          pipelines: [],
+          releases: [],
+          status: 'green',
+          lastUpdated: new Date('2026-08-04T12:34:00Z'),
+        })
+      );
+
+      expect(await screen.findByText(/^Updated at /)).toBeInTheDocument();
+      expect(container.querySelector('#statusDot')).toHaveClass(styles.statusDotConnected);
+    });
+
+    it('shows the error dot when data:updated arrives with an error', async () => {
+      const { container, emit } = renderMenubar();
+      act(() =>
+        emit.dataUpdated({
+          mergeRequests: [],
+          pipelines: [],
+          releases: [],
+          status: 'red',
+          error: 'boom',
+          lastUpdated: new Date('2026-08-04T12:34:00Z'),
+        })
+      );
+
+      await screen.findByText(/^Updated at /);
+      expect(container.querySelector('#statusDot')).toHaveClass(styles.statusDotError);
+    });
+
+    it('calls app.showPreferences() when the Preferences link is clicked', async () => {
+      const showPreferences = vi.fn().mockResolvedValue(undefined);
+      renderMenubar({ overrides: { app: { showPreferences } } });
+      await screen.findByText('GitLabBar');
+
+      await userEvent.click(screen.getByText('Preferences'));
+
+      expect(showPreferences).toHaveBeenCalled();
+    });
+  });
+
+  // Fix (Task 17, mirroring Tasks 15/16's mrCount/pipelineCount fixes):
+  // index.html:3130-3133 computes `#releaseCount` from `visibleReleases.length`
+  // (dismissed ids filtered out), not the raw `releases` collection.
+  it('the releaseCount badge excludes a dismissed release immediately after dismissal', async () => {
+    const release = (id: number) =>
+      ({
+        id,
+        tagName: `v${id}`,
+        name: `Release ${id}`,
+        description: '',
+        releasedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        webUrl: `https://gitlab.example.com/release/${id}`,
+        projectId: 100,
+        projectName: 'Project',
+        projectPath: 'group/project',
+        author: { id: 1, username: 'cyril', name: 'Cyril', avatar_url: '' },
+        accountId: 'acc-1',
+      }) as unknown as Release;
+
+    const dismissRelease = vi.fn().mockResolvedValue(undefined);
+    const { emit } = renderMenubar({ overrides: { gitlab: { dismissRelease } } });
+
+    act(() =>
+      emit.dataUpdated({
+        mergeRequests: [],
+        pipelines: [],
+        releases: [release(1), release(2)],
+        status: 'green',
+        lastUpdated: new Date('2026-08-04T12:00:00Z'),
+      })
+    );
+
+    expect(await screen.findByTestId('release-count')).toHaveTextContent('2');
+
+    await userEvent.click(screen.getByText('Releases'));
+    await userEvent.click(screen.getAllByTitle('Hide this release')[0]);
+
+    expect(dismissRelease).toHaveBeenCalledWith(1);
+    await waitFor(() => expect(screen.getByTestId('release-count')).toHaveTextContent('1'));
   });
 });
