@@ -4,6 +4,7 @@ import type { MergeRequest, MergeRequestAuthor } from '@/shared/types';
 // for the `@/*` alias on value imports (see src/test/renderWithApi.tsx and
 // src/renderer/api/FakeApi.ts for the same pre-existing gap).
 import { Avatar, AvatarOverflow } from '../../shared/Avatar/Avatar';
+import { ApprovalBadge } from './ApprovalBadge';
 import { ItemCard } from '../../shared/ItemCard/ItemCard';
 import { getAgeInfo, formatTime } from '../../utils/format';
 import styles from './MergeRequestRow.module.css';
@@ -198,6 +199,7 @@ export function MergeRequestRow({ mr, onOpen, onDismiss, onToggleNotes, onAction
           {mr.projectPath || mr.projectName}
           <code>!{mr.iid}</code>
           {mr.hasConflicts && <span className={styles.conflictBadge}>Conflicts</span>}
+          <ApprovalBadge approvedBy={mr.approvedBy} approvalsRequired={mr.approvalsRequired} />
         </div>
         {/* index.html:2852-2856 */}
         <div className={styles.branchInfo}>
