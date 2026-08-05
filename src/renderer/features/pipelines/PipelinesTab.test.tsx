@@ -209,6 +209,23 @@ describe('PipelinesTab', () => {
       expect(openExternal).toHaveBeenCalledWith('https://gitlab.example.com/jobs/555');
       expect(openExternal).not.toHaveBeenCalledWith('https://gitlab.example.com/pipelines/999');
     });
+
+    // index.html:3062-3064 -- `if (url && ...)`. A falsy `webUrl` must be a
+    // no-op, not a call to `openExternal('')`. Pairs with the test above,
+    // which proves the truthy side of the same branch -- together they pin
+    // both sides.
+    it('does not call openExternal when a job chip with an empty webUrl is clicked', async () => {
+      const openExternal = vi.fn().mockResolvedValue(undefined);
+      const { emit } = renderTab({ overrides: { app: { openExternal } } });
+      const pipeline = makePipeline({
+        projectPath: 'group/job-no-url',
+        jobs: [makeJob({ name: 'no-url-job', stage: 'deploy', webUrl: '' })],
+      });
+      await pushPipelines(emit, [pipeline]);
+      await userEvent.click(await screen.findByText('no-url-job'));
+
+      expect(openExternal).not.toHaveBeenCalled();
+    });
   });
 
   // index.html:3046-3055
