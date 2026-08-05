@@ -130,6 +130,15 @@ export function GeneralPage() {
     [api, notifications]
   );
 
+  const handleNotifyApprovedChange = useCallback(
+    async (e: ChangeEvent<HTMLInputElement>) => {
+      const next = { ...notifications, mrApproved: e.target.checked };
+      setNotifications(next);
+      await api.config.set('notifications', next);
+    },
+    [api, notifications]
+  );
+
   return (
     <div className={styles.page}>
       <h1 className={styles.pageTitle}>Settings</h1>
@@ -264,6 +273,22 @@ export function GeneralPage() {
               id="notifyFailedPipeline"
               checked={notifications.pipelineFailed}
               onChange={(e) => void handleNotifyFailedPipelineChange(e)}
+            />
+            <span className={styles.toggleSlider} />
+          </label>
+        </div>
+
+        <div className={styles.toggleRow}>
+          <div className={styles.toggleInfo}>
+            <div className={styles.toggleLabel}>MR approved</div>
+            <div className={styles.toggleDesc}>Receive a notification when someone approves your MR</div>
+          </div>
+          <label className={styles.toggle}>
+            <input
+              type="checkbox"
+              id="notifyMRApproved"
+              checked={notifications.mrApproved}
+              onChange={(e) => void handleNotifyApprovedChange(e)}
             />
             <span className={styles.toggleSlider} />
           </label>

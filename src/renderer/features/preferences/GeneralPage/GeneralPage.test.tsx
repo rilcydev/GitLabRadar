@@ -217,6 +217,37 @@ describe('GeneralPage', () => {
       expect((await api.config.get('notifications')).pipelineFailed).toBe(false);
     });
   });
+
+  it('loads and persists the "MR approved" notification toggle', async () => {
+    const { api, container } = renderWithApi(<GeneralPage />, {
+      overrides: {
+        config: {
+          getAll: async () => ({
+            ...(await realDefaultConfig()),
+            notifications: {
+              enabled: true,
+              newMRAssigned: true,
+              mrMentioned: true,
+              pipelineStarted: false,
+              pipelineFailed: true,
+              pipelineSuccess: false,
+              mrApproved: false,
+            },
+          }),
+        },
+      },
+    });
+    const toggle = await waitFor(() => {
+      const el = container.querySelector<HTMLInputElement>('#notifyMRApproved');
+      expect(el).not.toBeNull();
+      expect(el?.checked).toBe(false);
+      return el as HTMLInputElement;
+    });
+    await userEvent.click(toggle);
+    await waitFor(async () => {
+      expect((await api.config.get('notifications')).mrApproved).toBe(true);
+    });
+  });
 });
 
 // Minimal stand-in for DEFAULT_CONFIG, spelled out locally (rather than
