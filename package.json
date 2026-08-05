@@ -7,7 +7,9 @@
   "scripts": {
     "prestart": "vite build --config vite.renderer.config.ts",
     "start": "electron-forge start",
+    "prepackage": "vite build --config vite.renderer.config.ts",
     "package": "electron-forge package",
+    "premake": "vite build --config vite.renderer.config.ts",
     "make": "electron-forge make",
     "publish": "electron-forge publish",
     "lint": "eslint --ext .ts,.tsx .",

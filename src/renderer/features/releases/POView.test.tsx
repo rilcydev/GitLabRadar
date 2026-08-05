@@ -299,6 +299,54 @@ describe('POView', () => {
     });
   });
 
+  // Component-level anchor for format.ts's simpleMarkdown security fix
+  // (fix rounds 1-3, see format.test.ts's 123 cases). Those tests pin
+  // simpleMarkdown's *string* output exhaustively, but nothing previously
+  // proved any component actually routes `release.description` through it
+  // before handing the result to `dangerouslySetInnerHTML` -- the call
+  // site in POReleaseRow.tsx could be swapped for the raw
+  // `release.description` and the entire suite would still pass, because
+  // no test renders past the function boundary. This test renders the
+  // real POView -> POReleaseRow tree with a hostile description and
+  // asserts on the *resolved DOM property* (Element.protocol, and
+  // attribute presence), not on an HTML string -- asserting the string is
+  // the exact mistake format.test.ts's own DOM cross-check test (fix
+  // round 3) exists to avoid one layer down; this test applies the same
+  // reasoning at the component boundary.
+  describe('release description rendering is inert against a hostile description (security regression guard)', () => {
+    it('never produces a javascript:-resolving anchor or an injected event-handler attribute for a hostile description', async () => {
+      // Not markdown syntax -- literal HTML, the way GitLab lets anyone
+      // with release-description write access phrase it. If the
+      // description ever reaches dangerouslySetInnerHTML unescaped (i.e.
+      // simpleMarkdown is bypassed), a real, live <a> element with a
+      // javascript: href and an inline event-handler attribute is exactly
+      // what jsdom -- and Chromium/Electron -- would materialise from
+      // this string.
+      const hostileDescription =
+        '<a href="javascript:window.__pwned=true" onmouseover="window.__hijacked=true">Release notes</a>';
+      const { container, emit } = renderView();
+      await pushReleases(emit, [
+        makeRelease({ projectPath: 'group/hostile', tagName: 'v-hostile', description: hostileDescription }),
+      ]);
+      await screen.findByText('v-hostile');
+
+      // simpleMarkdown HTML-escapes the whole string before any markdown
+      // transform runs, and this payload contains no `[label](url)`
+      // syntax for the link rule to act on -- so a correctly-guarded
+      // render produces no <a> element anywhere in the tree at all.
+      const anchors = Array.from(container.querySelectorAll('a'));
+      expect(anchors).toHaveLength(0);
+
+      // Belt-and-braces on the property that actually matters at
+      // runtime: even if some future change legitimately introduces an
+      // <a> here, none may resolve to a javascript: URL, and no element
+      // anywhere may carry an event-handler attribute injected via the
+      // description.
+      expect(anchors.some((a) => a.protocol === 'javascript:')).toBe(false);
+      expect(container.querySelector('[onmouseover]')).toBeNull();
+    });
+  });
+
   // index.html:3462-3530 -- pagination.
   describe('pagination ("Load more releases")', () => {
     function pageOfReleases(count: number, prefix: string): Release[] {

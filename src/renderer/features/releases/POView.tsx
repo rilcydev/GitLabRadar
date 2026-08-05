@@ -248,7 +248,7 @@ export function POView({ viewMode }: POViewProps) {
                 {count} release{count > 1 ? 's' : ''}
               </span>
             </div>
-            <div className={styles.poReleasesContainer} data-project-id={projectId}>
+            <div data-project-id={projectId}>
               {allReleases.map((release) => (
                 <POReleaseRow
                   key={release.id}
