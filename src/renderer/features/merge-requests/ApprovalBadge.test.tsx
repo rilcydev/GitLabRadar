@@ -19,4 +19,11 @@ describe('ApprovalBadge', () => {
     render(<ApprovalBadge approvedBy={[u(1, 'Alice')]} approvalsRequired={0} />);
     expect(screen.getByText('1')).toBeInTheDocument();
   });
+
+  it('renders nothing when approvedBy is missing at runtime (defensive)', () => {
+    const { container } = render(
+      <ApprovalBadge approvedBy={undefined as unknown as ReturnType<typeof u>[]} approvalsRequired={0} />
+    );
+    expect(container).toBeEmptyDOMElement();
+  });
 });
