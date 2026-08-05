@@ -8,6 +8,7 @@ import { untagPollingService } from '../services/untagPolling';
 import { trayManager } from '../tray';
 import { GitLabClient, getGitLabClient } from '../api/gitlab';
 import { setAutoLaunch, getAutoLaunchStatus } from '../services/autolaunch';
+import { sendTestNotification } from '../services/notifications';
 import { GitLabAccount, GitLabAccountInput, AppConfig } from '../../shared/types';
 
 async function resolveUserIds(client: GitLabClient, ids: number[]): Promise<number[]> {
@@ -382,5 +383,9 @@ export function setupIpcHandlers(): void {
 
   ipcMain.handle(IPC_CHANNELS.APP_HIDE_MENU, () => {
     trayManager.hideMenuWindow();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.APP_SEND_TEST_NOTIFICATION, () => {
+    return sendTestNotification();
   });
 }

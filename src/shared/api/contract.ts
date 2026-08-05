@@ -37,6 +37,21 @@ export interface AccountRemovalResult {
   error?: string;
 }
 
+// Mirrors src/main/services/notifications.ts's sendTestNotification() return
+// shape. Electron's Notification only tells the caller what happened via
+// events ('show' fires once the OS actually displayed it, 'failed' fires
+// with an error string when the OS refused) -- `.show()` itself resolves
+// nothing about the outcome. This command exists specifically because,
+// after the Electron 42 UNNotification migration (see notifications.ts's
+// showNotification() doc comment), whether this project's ad-hoc code
+// signing satisfies the new API is unknown and untestable outside macOS.
+// 'timeout' is a third, honest outcome for when neither event fires within
+// the race window: it must never be reported as success.
+export type TestNotificationOutcome =
+  | { status: 'shown' }
+  | { status: 'failed'; error: string }
+  | { status: 'timeout' };
+
 export interface ProjectSearchResult {
   id: number;
   name: string;
@@ -159,6 +174,7 @@ export interface GitLabBarApi {
     showPreferences(): Promise<void>;
     quit(): Promise<void>;
     hideMenu(): Promise<void>;
+    sendTestNotification(): Promise<TestNotificationOutcome>;
   };
   on: {
     dataUpdated(cb: (data: PolledData) => void): Unsubscribe;

@@ -1,6 +1,7 @@
 import userEvent from '@testing-library/user-event';
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import type { TestNotificationOutcome } from '@/shared/api/contract';
 import { renderWithApi } from '../../../../test/renderWithApi';
 import { GeneralPage } from './GeneralPage';
 
@@ -224,6 +225,106 @@ describe('GeneralPage', () => {
     // `notifications` ever happened.
     const notificationsAfterClick = await api.config.get('notifications');
     expect(notificationsAfterClick).toEqual(notificationsBeforeClick);
+  });
+
+  // New feature, not ported from preferences.html -- see the module doc
+  // comment on GeneralPage.tsx and test-notification-button-report.md. The
+  // button must call the real command (not just render) and, per the task,
+  // report what api.app.sendTestNotification() actually resolves rather
+  // than assuming success.
+  it('calls api.app.sendTestNotification when the button is clicked', async () => {
+    let calls = 0;
+    renderWithApi(<GeneralPage />, {
+      overrides: {
+        app: {
+          sendTestNotification: async () => {
+            calls += 1;
+            return { status: 'shown' };
+          },
+        },
+      },
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Send a test notification' }));
+    await waitFor(() => expect(calls).toBe(1));
+  });
+
+  it('shows a distinct "displayed" message for the shown outcome', async () => {
+    renderWithApi(<GeneralPage />, {
+      overrides: { app: { sendTestNotification: async () => ({ status: 'shown' }) } },
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Send a test notification' }));
+
+    expect(await screen.findByText(/^Notification displayed\./)).toBeInTheDocument();
+  });
+
+  it('shows the failure reason distinctly for the failed outcome', async () => {
+    renderWithApi(<GeneralPage />, {
+      overrides: {
+        app: {
+          sendTestNotification: async () => ({ status: 'failed', error: 'not code-signed' }),
+        },
+      },
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Send a test notification' }));
+
+    expect(
+      await screen.findByText('Notification failed to display: not code-signed')
+    ).toBeInTheDocument();
+  });
+
+  it('shows a distinct "no response" message for the timeout outcome, never claiming success', async () => {
+    renderWithApi(<GeneralPage />, {
+      overrides: { app: { sendTestNotification: async () => ({ status: 'timeout' }) } },
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Send a test notification' }));
+
+    const message = await screen.findByText(/^No response from macOS after 5 seconds\./);
+    expect(message).toBeInTheDocument();
+    expect(message.textContent).not.toMatch(/displayed/i);
+  });
+
+  it('renders no test-notification status message before the button is clicked', () => {
+    renderWithApi(<GeneralPage />);
+    expect(screen.queryByText(/Notification displayed/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Notification failed/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/No response from macOS/)).not.toBeInTheDocument();
+  });
+
+  it('gives each of the three outcomes its own message and its own status class, none shared', async () => {
+    const outcomes: TestNotificationOutcome[] = [
+      { status: 'shown' },
+      { status: 'failed', error: 'boom' },
+      { status: 'timeout' },
+    ];
+
+    const seenTexts = new Set<string>();
+    const seenClassNames = new Set<string>();
+
+    for (const outcome of outcomes) {
+      const { container, unmount } = renderWithApi(<GeneralPage />, {
+        overrides: { app: { sendTestNotification: async () => outcome } },
+      });
+
+      await userEvent.click(screen.getByRole('button', { name: 'Send a test notification' }));
+
+      const messageEl = await waitFor(() => {
+        const el = container.querySelector('[class*="testNotificationStatus"]');
+        expect(el).not.toBeNull();
+        return el as HTMLElement;
+      });
+
+      seenTexts.add(messageEl.textContent ?? '');
+      seenClassNames.add(messageEl.className);
+
+      unmount();
+    }
+
+    expect(seenTexts.size).toBe(3);
+    expect(seenClassNames.size).toBe(3);
   });
 });
 

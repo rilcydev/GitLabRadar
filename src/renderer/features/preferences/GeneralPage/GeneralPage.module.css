@@ -206,3 +206,73 @@
 .toggle input:checked + .toggleSlider:before {
   transform: translateX(20px);
 }
+
+/*
+ * New feature, not ported from preferences.html -- see GeneralPage.tsx's
+ * "Test notification" row and test-notification-button-report.md.
+ *
+ * `.btn`/`.btnPrimary` intentionally duplicate the rules already declared
+ * in ../AccountsPage/AccountsPage.module.css, for the same reason the file
+ * header above gives for `.formGroup` etc.: this component owns its full
+ * page body and must not depend on a class from another page's module.
+ */
+.btn {
+  padding: 10px 20px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border: none;
+  flex-shrink: 0;
+}
+
+.btnPrimary {
+  background: var(--gradient-purple);
+  color: white;
+  box-shadow: var(--shadow-md-preferences), 0 0 20px var(--accent-purple-glow);
+}
+
+.btnPrimary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px var(--accent-purple-glow);
+}
+
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Reports the three sendTestNotification() outcomes distinctly: 'shown'
+   (green, success), 'failed' (red, error), 'timeout' (orange, unknown --
+   deliberately NOT styled as success, since a timeout is not a confirmed
+   display). Same visual language (color + tinted background matching the
+   accent's hue at reduced opacity) already used for status colors
+   throughout the renderer -- see e.g. PipelineRow.module.css's
+   `.itemTagPending` / AccountsPage.module.css's `.statusMessage*`. */
+.testNotificationStatus {
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  margin-top: 12px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.testNotificationStatusSuccess {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: var(--accent-green);
+}
+
+.testNotificationStatusError {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: var(--accent-red);
+}
+
+.testNotificationStatusWarning {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: var(--accent-orange);
+}

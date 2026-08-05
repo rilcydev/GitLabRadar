@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type ChangeEvent } from 'react';
 import type { AppConfig } from '@/shared/types';
+import type { TestNotificationOutcome } from '@/shared/api/contract';
 // Relative import: eslint's import/no-unresolved has no TS-aware resolver
 // for the `@/*` alias on value imports (see src/test/renderWithApi.tsx and
 // src/renderer/api/FakeApi.ts for the same pre-existing gap).
@@ -36,6 +37,15 @@ export function GeneralPage() {
   const [refreshInterval, setRefreshInterval] = useState(60000);
   const [failedPipelineMaxAge, setFailedPipelineMaxAge] = useState(24);
   const [showUnassignedMRs, setShowUnassignedMRs] = useState(false);
+  // New feature, not ported from preferences.html: see this component's
+  // module doc comment above and test-notification-button-report.md for why
+  // this departs from the strict-parity rule that otherwise governs this
+  // file. 'idle'/'sending' are local UI phases; the other three mirror
+  // TestNotificationOutcome['status'] exactly, so the render below can
+  // switch on one union instead of juggling two.
+  const [testNotificationStatus, setTestNotificationStatus] = useState<
+    'idle' | 'sending' | TestNotificationOutcome
+  >('idle');
 
   // preferences.html:1104-1119
   useEffect(() => {
@@ -110,6 +120,49 @@ export function GeneralPage() {
     },
     [api]
   );
+
+  // Fires the IPC round-trip and waits for its resolved outcome -- never
+  // resolves as soon as the main process calls `.show()`. See
+  // src/main/services/notifications.ts's sendTestNotification() for what
+  // "resolved outcome" means here (a race between Electron's 'show'/'failed'
+  // events and a timeout, so this call itself can never hang forever).
+  const handleSendTestNotification = useCallback(async () => {
+    setTestNotificationStatus('sending');
+    try {
+      const outcome = await api.app.sendTestNotification();
+      setTestNotificationStatus(outcome);
+    } catch (err) {
+      // The IPC call itself rejecting (as opposed to resolving a 'failed'
+      // outcome) is not one of the three outcomes sendTestNotification()
+      // documents, but surfacing it as a failure rather than swallowing it
+      // keeps this button honest if that ever happens.
+      setTestNotificationStatus({
+        status: 'failed',
+        error: err instanceof Error ? err.message : 'Unknown error',
+      });
+    }
+  }, [api]);
+
+  const testNotificationMessage =
+    testNotificationStatus === 'idle' || testNotificationStatus === 'sending'
+      ? null
+      : testNotificationStatus.status === 'shown'
+        ? 'Notification displayed. If no banner appeared on screen, check that macOS notifications are enabled for GitLabBar in System Settings.'
+        : testNotificationStatus.status === 'failed'
+          ? `Notification failed to display: ${testNotificationStatus.error}`
+          : 'No response from macOS after 5 seconds. Unable to confirm whether the notification appeared.';
+
+  const testNotificationClassName =
+    testNotificationStatus === 'idle' || testNotificationStatus === 'sending'
+      ? ''
+      : [
+          styles.testNotificationStatus,
+          testNotificationStatus.status === 'shown' ? styles.testNotificationStatusSuccess : '',
+          testNotificationStatus.status === 'failed' ? styles.testNotificationStatusError : '',
+          testNotificationStatus.status === 'timeout' ? styles.testNotificationStatusWarning : '',
+        ]
+          .filter(Boolean)
+          .join(' ');
 
   return (
     <div className={styles.page}>
@@ -242,6 +295,32 @@ export function GeneralPage() {
             <span className={styles.toggleSlider} />
           </label>
         </div>
+
+        {/* New feature, not ported from preferences.html -- see the module
+            doc comment and test-notification-button-report.md. Electron 42
+            requires macOS notifications to be code-signed and this project
+            only ad-hoc signs; this button is the only way to find out
+            whether that still works, since it can't be tested on this
+            (Linux) machine. It must report what actually happened rather
+            than assume success -- see handleSendTestNotification above. */}
+        <div className={styles.toggleRow}>
+          <div className={styles.toggleInfo}>
+            <div className={styles.toggleLabel}>Test notification</div>
+            <div className={styles.toggleDesc}>
+              Send a notification now to check that macOS is displaying them
+            </div>
+          </div>
+          <button
+            type="button"
+            className={`${styles.btn} ${styles.btnPrimary}`}
+            disabled={testNotificationStatus === 'sending'}
+            onClick={() => void handleSendTestNotification()}
+          >
+            {testNotificationStatus === 'sending' ? 'Sending...' : 'Send a test notification'}
+          </button>
+        </div>
+
+        {testNotificationMessage !== null && <div className={testNotificationClassName}>{testNotificationMessage}</div>}
       </div>
     </div>
   );

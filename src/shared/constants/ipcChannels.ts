@@ -40,6 +40,7 @@ export const IPC_CHANNELS = {
   APP_SHOW_PREFERENCES: 'app:showPreferences',
   APP_QUIT: 'app:quit',
   APP_HIDE_MENU: 'app:hideMenu',
+  APP_SEND_TEST_NOTIFICATION: 'app:sendTestNotification',
 
   // Events (main → renderer)
   DATA_UPDATED: 'data:updated',

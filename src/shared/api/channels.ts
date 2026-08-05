@@ -38,6 +38,7 @@ export const COMMAND_CHANNELS = {
     showPreferences: 'app:showPreferences',
     quit: 'app:quit',
     hideMenu: 'app:hideMenu',
+    sendTestNotification: 'app:sendTestNotification',
   },
 } as const;
 

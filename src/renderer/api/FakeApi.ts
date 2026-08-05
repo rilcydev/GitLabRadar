@@ -139,6 +139,9 @@ export function createFakeApi(overrides: FakeApiOverrides = {}): {
     showPreferences: async () => {},
     quit: async () => {},
     hideMenu: async () => {},
+    // Default outcome is the happy path; tests exercising the 'failed' and
+    // 'timeout' outcomes override this per-call via `overrides.app`.
+    sendTestNotification: async () => ({ status: 'shown' }),
     ...overrides.app,
   };
 

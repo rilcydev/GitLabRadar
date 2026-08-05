@@ -38,6 +38,69 @@ function showNotification(notification: Notification, kind: string): void {
   notification.show();
 }
 
+// How long sendTestNotification() waits for Electron to report an outcome
+// before giving up and reporting 'timeout'. Electron does not document a
+// case where neither 'show' nor 'failed' fires, but nothing guarantees one
+// doesn't exist (e.g. a wedged notification daemon), and a preferences-window
+// button that can hang forever is a worse failure mode than an occasional,
+// honestly-labelled "timeout". 5 seconds is generous for a local OS call --
+// comfortably longer than any real 'show'/'failed' round-trip should take --
+// while still keeping the button from hanging indefinitely.
+const TEST_NOTIFICATION_TIMEOUT_MS = 5000;
+
+export type TestNotificationOutcome =
+  | { status: 'shown' }
+  | { status: 'failed'; error: string }
+  | { status: 'timeout' };
+
+/**
+ * Sends a one-off notification for the preferences window's "Send a test
+ * notification" button and resolves with what actually happened, rather
+ * than resolving as soon as `.show()` is called -- calling `.show()` only
+ * proves the request was made, not that macOS displayed anything (see this
+ * file's showNotification() doc comment for why that gap matters here).
+ *
+ * Races the 'show'/'failed' events against TEST_NOTIFICATION_TIMEOUT_MS so
+ * the button cannot hang forever if neither ever fires. Whichever settles
+ * first wins; the other is ignored.
+ */
+export function sendTestNotification(): Promise<TestNotificationOutcome> {
+  return new Promise((resolve) => {
+    const notification = new Notification({
+      title: 'GitLabBar test notification',
+      body: 'If you can see this, notifications are working.',
+      silent: false,
+    });
+
+    let settled = false;
+    const settle = (outcome: TestNotificationOutcome) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(outcome);
+    };
+
+    notification.on('show', () => settle({ status: 'shown' }));
+    notification.on('failed', (_event, error: string) => {
+      console.error(
+        `Test notification failed to display: ${error}\n` +
+          'If this began after the Electron 43 upgrade, the UNNotification API ' +
+          'requires code signing and ad-hoc signing may not satisfy it.'
+      );
+      settle({ status: 'failed', error });
+    });
+
+    const timer = setTimeout(() => {
+      console.error(
+        `Test notification: neither "show" nor "failed" fired within ${TEST_NOTIFICATION_TIMEOUT_MS}ms.`
+      );
+      settle({ status: 'timeout' });
+    }, TEST_NOTIFICATION_TIMEOUT_MS);
+
+    notification.show();
+  });
+}
+
 export function notifyNewMRAssigned(mr: MergeRequest): void {
   const notifConfig = getNotificationConfig();
   if (!notifConfig.enabled || !notifConfig.newMRAssigned) return;
