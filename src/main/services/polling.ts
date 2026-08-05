@@ -3,6 +3,7 @@ import { MergeRequest, Pipeline, Release } from '../../shared/types';
 import { accounts } from '../store/accounts';
 import { config } from '../store/config';
 import { getGitLabClient, clearClientCache } from '../api/gitlab';
+import { enrichApprovals } from '../api/approvals';
 import { checkNewMRs, checkPipelineStatusChange, cleanNotificationCache } from './notifications';
 
 export type TrayStatus = 'green' | 'orange' | 'red' | 'gray';
@@ -119,6 +120,11 @@ class PollingService {
               }));
             }
           }
+
+          // Enrich every MR with approval state for the approval badge.
+          await enrichApprovals(mrs, (projectId, iid) =>
+            client.getMergeRequestApprovals(projectId, iid)
+          );
 
           allMergeRequests.push(...mrs);
 

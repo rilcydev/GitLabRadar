@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
+import { mapApprovals, GitLabApprovalsResponse, ApprovalState } from './approvals';
 import {
   GitLabUser,
   GitLabMergeRequestResponse,
@@ -297,6 +298,13 @@ export class GitLabClient {
 
   getCurrentUserId(): number | null {
     return this.currentUserId;
+  }
+
+  async getMergeRequestApprovals(projectId: number, iid: number): Promise<ApprovalState> {
+    const response = await this.client.get<GitLabApprovalsResponse>(
+      `/projects/${projectId}/merge_requests/${iid}/approvals`
+    );
+    return mapApprovals(response.data);
   }
 
   async getProject(projectId: number): Promise<GitLabProject | null> {
