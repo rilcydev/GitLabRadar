@@ -112,7 +112,7 @@ notif « Application started » au démarrage (`tray.ts:132`). De plus, `pnpm st
 lance un Electron **non signé** (`com.github.Electron`) → ne teste pas la signature.
 
 **Test réalisé :** condition exacte reproduite — Electron 43, **signé ad-hoc**
-(`codesign --sign -`, identifier `com.yoanbernabeu.gitlabbar`, `flags=0x2(adhoc)`,
+(`codesign --sign -`, identifier `com.tourniercy.gitlabbar`, `flags=0x2(adhoc)`,
 comme `forge.config.ts`), notif tirée via le wrapper `show`/`failed`.
 
 **Résultat :**

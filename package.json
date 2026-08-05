@@ -32,18 +32,18 @@
     "productivity"
   ],
   "author": {
-    "name": "Yoan Bernabeu",
-    "email": "ybernabeu@seineyonne.fr"
+    "name": "Cyril Tournier",
+    "email": "tourniercy@gmail.com"
   },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yoanbernabeu/GitLabBar.git"
+    "url": "https://github.com/Tourniercy/GitLabBar.git"
   },
   "bugs": {
-    "url": "https://github.com/yoanbernabeu/GitLabBar/issues"
+    "url": "https://github.com/Tourniercy/GitLabBar/issues"
   },
-  "homepage": "https://github.com/yoanbernabeu/GitLabBar#readme",
+  "homepage": "https://github.com/Tourniercy/GitLabBar#readme",
   "devDependencies": {
     "@electron-forge/cli": "^7.11.1",
     "@electron-forge/maker-deb": "^7.11.1",

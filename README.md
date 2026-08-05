@@ -135,7 +135,7 @@ All notification types can be individually enabled/disabled.
 **Install or upgrade with a single command:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/yoanbernabeu/GitLabBar/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Tourniercy/GitLabBar/main/install.sh | bash
 ```
 
 The script automatically detects if GitLabBar is already installed and handles the upgrade (stop, replace, relaunch).
@@ -144,7 +144,7 @@ The script automatically detects if GitLabBar is already installed and handles t
 
 ### From Releases (manual)
 
-1. Download the latest `.dmg` file from the [Releases](https://github.com/yoanbernabeu/GitLabBar/releases) page
+1. Download the latest `.dmg` file from the [Releases](https://github.com/Tourniercy/GitLabBar/releases) page
 2. Open the `.dmg` file
 3. Drag **GitLabBar** to your Applications folder
 4. Launch GitLabBar from Applications
@@ -191,7 +191,7 @@ Then open GitLabBar normally.
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/yoanbernabeu/GitLabBar.git
+git clone https://github.com/Tourniercy/GitLabBar.git
 cd GitLabBar
 ```
 
@@ -260,4 +260,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Author
 
-**Yoan Bernabeu** - [GitHub](https://github.com/yoanbernabeu)
+**Cyril Tournier** - [GitHub](https://github.com/Tourniercy)
