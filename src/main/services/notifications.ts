@@ -10,6 +10,34 @@ function getNotificationConfig() {
   return config.get('notifications');
 }
 
+/**
+ * Shows a notification, and logs it if macOS refuses to display it.
+ *
+ * Electron 42 migrated macOS notifications from the deprecated
+ * NSUserNotification API to UNNotification, which **requires the application to
+ * be code-signed**. An app that does not satisfy that check emits a `failed`
+ * event instead of showing anything — silently, with nothing surfaced anywhere.
+ *
+ * This project ad-hoc signs (`osxSign: { identity: '-' }` in forge.config.ts).
+ * That satisfied the old API, and restoring notifications was the entire point
+ * of the change that introduced it. Whether ad-hoc signing satisfies the new API
+ * could not be settled from documentation and cannot be tested without a Mac.
+ *
+ * So this exists to make the answer observable. If notifications stop appearing
+ * after the Electron 43 upgrade, this line in the terminal is the difference
+ * between a five-minute diagnosis and an afternoon.
+ */
+function showNotification(notification: Notification, kind: string): void {
+  notification.on('failed', (_event, error: string) => {
+    console.error(
+      `Notification "${kind}" failed to display: ${error}\n` +
+        'If this began after the Electron 43 upgrade, the UNNotification API ' +
+        'requires code signing and ad-hoc signing may not satisfy it.'
+    );
+  });
+  notification.show();
+}
+
 export function notifyNewMRAssigned(mr: MergeRequest): void {
   const notifConfig = getNotificationConfig();
   if (!notifConfig.enabled || !notifConfig.newMRAssigned) return;
@@ -27,7 +55,7 @@ export function notifyNewMRAssigned(mr: MergeRequest): void {
     shell.openExternal(mr.webUrl);
   });
 
-  notification.show();
+  showNotification(notification, 'new MR assigned');
   notifiedMRs.add(key);
 }
 
@@ -48,7 +76,7 @@ export function notifyMRMentioned(mr: MergeRequest): void {
     shell.openExternal(mr.webUrl);
   });
 
-  notification.show();
+  showNotification(notification, 'MR mentioned');
   notifiedMRs.add(key);
 }
 
@@ -69,7 +97,7 @@ export function notifyPipelineStarted(pipeline: Pipeline): void {
     shell.openExternal(pipeline.webUrl);
   });
 
-  notification.show();
+  showNotification(notification, 'pipeline started');
   notifiedPipelines.add(key);
 }
 
@@ -91,7 +119,7 @@ export function notifyPipelineFailed(pipeline: Pipeline): void {
     shell.openExternal(pipeline.webUrl);
   });
 
-  notification.show();
+  showNotification(notification, 'pipeline failed');
   notifiedPipelines.add(key);
 }
 
@@ -112,7 +140,7 @@ export function notifyPipelineSuccess(pipeline: Pipeline): void {
     shell.openExternal(pipeline.webUrl);
   });
 
-  notification.show();
+  showNotification(notification, 'pipeline succeeded');
   notifiedPipelines.add(key);
 }
 
