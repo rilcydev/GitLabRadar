@@ -1,5 +1,5 @@
 import { Notification, shell } from 'electron';
-import { MergeRequest, Pipeline, PipelineStatus } from '../../shared/types';
+import { MergeRequest, Pipeline } from '../../shared/types';
 import { config } from '../store/config';
 
 // Cache to avoid duplicate notifications

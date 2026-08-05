@@ -2,12 +2,11 @@ import { ipcMain, shell, app } from 'electron';
 import { IPC_CHANNELS } from '../../shared/constants/ipcChannels';
 import { accounts } from '../store/accounts';
 import { config } from '../store/config';
-import { keychain } from '../store/keychain';
 import { pollingService } from '../services/polling';
 import { untagPollingService } from '../services/untagPolling';
 import { trayManager } from '../tray';
 import { GitLabClient, getGitLabClient } from '../api/gitlab';
-import { setAutoLaunch, getAutoLaunchStatus } from '../services/autolaunch';
+import { setAutoLaunch } from '../services/autolaunch';
 import { GitLabAccount, GitLabAccountInput, AppConfig } from '../../shared/types';
 
 async function resolveUserIds(client: GitLabClient, ids: number[]): Promise<number[]> {

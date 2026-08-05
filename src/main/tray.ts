@@ -87,7 +87,7 @@ class TrayManager {
             buffer: icon2x.toPNG(),
           });
         }
-      } catch (e) {
+      } catch {
         console.warn('Could not load @2x icon');
       }
 

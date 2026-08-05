@@ -1,5 +1,4 @@
 import { app, BrowserWindow } from 'electron';
-import path from 'path';
 import { trayManager } from './main/tray';
 import { pollingService } from './main/services/polling';
 import { untagPollingService } from './main/services/untagPolling';

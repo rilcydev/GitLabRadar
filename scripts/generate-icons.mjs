@@ -16,7 +16,6 @@ const colors = {
 };
 
 async function generateIcon(color, colorName, size) {
-  const scale = size / 16;
 
   // Create SVG with merge request icon
   const svg = `
