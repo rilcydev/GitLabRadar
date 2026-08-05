@@ -74,3 +74,21 @@ strictDepBuilds: true
 #
 # Revisit if electron-forge ever ships a registry-resolved node-gyp.
 blockExoticSubdeps: false
+
+# electron-forge REQUIRES a flat node_modules. Its preflight check
+# (@electron-forge/cli/src/util/check-system.ts) literally runs
+# `pnpm config get node-linker` and throws unless the answer is exactly
+# "hoisted" — packaging needs real directories on disk, not pnpm's symlinked
+# virtual store.
+#
+# Note this setting lives HERE, not in .npmrc, despite what forge's own error
+# message says. pnpm 10+ moved settings into this file; verified with
+# `pnpm config get node-linker`, which reads it from here and answers
+# "hoisted".
+#
+# The cost is real and worth naming: hoisting gives up pnpm's strict isolation,
+# so a package can once again import something it never declared. That is the
+# npm behaviour we came from, not a regression — but it means pnpm is being
+# used here for its store, its lockfile and its build-script gating, not for
+# dependency strictness.
+nodeLinker: hoisted
