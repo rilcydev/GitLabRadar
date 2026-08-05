@@ -198,19 +198,19 @@ cd GitLabBar
 2. Install dependencies:
 
 ```bash
-npm install
+pnpm install
 ```
 
 3. Run in development mode:
 
 ```bash
-npm start
+pnpm start
 ```
 
 4. Build the application:
 
 ```bash
-npm run make
+pnpm run make
 ```
 
 The built application will be available in the `out/make` directory.

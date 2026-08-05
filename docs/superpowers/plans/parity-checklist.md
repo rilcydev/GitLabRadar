@@ -60,7 +60,7 @@ window.
   ```
   git revert 29e4dfc
   ```
-  then rebuild (`npm start` runs the build automatically via the
+  then rebuild (`pnpm start` runs the build automatically via the
   `prestart` script). This restores all twelve files Task 19 deleted plus
   its two config edits in one commit. It does **not** un-ship any release
   already packaged from this branch — see Task 19's report, "Rollback"
@@ -218,8 +218,8 @@ part of checking this list, and not license to add an error boundary.
 ## 5. Before you start checking boxes
 
 1. Check out this branch (`react-migration`) on a Mac with the full
-   toolchain, `npm install` if you haven't already.
-2. `npm start`. A `prestart` script builds the React bundle
+   toolchain, `pnpm install` if you haven't already.
+2. `pnpm start`. A `prestart` script builds the React bundle
    (`dist/`) automatically — you should see Vite build output
    (module count, file sizes) in the terminal *before* Electron/Forge log
    lines start. If you don't, or if `dist/` looks stale, see the

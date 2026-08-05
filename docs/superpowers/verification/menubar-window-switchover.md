@@ -199,7 +199,7 @@ entries; `'./src/renderer'` (the vanilla-sources copy) is gone, and nothing
 in `tray.ts` references it anymore.
 
 The `prestart` script Task 11 added (`vite build --config
-vite.renderer.config.ts`, runs automatically before `npm start`) is
+vite.renderer.config.ts`, runs automatically before `pnpm start`) is
 unchanged and now the *only* thing that produces `dist/` for either
 window — there is no vanilla fallback left if it doesn't run.
 
@@ -314,12 +314,12 @@ not just the summary count.
 
 ## Verified (this machine)
 
-- `npm run typecheck` → exit 0, no output.
-- `npm run test:run` → **379/379 tests pass, 24 files**, including
+- `pnpm run typecheck` → exit 0, no output.
+- `pnpm run test:run` → **379/379 tests pass, 24 files**, including
   `src/test/viteRendererConfig.test.ts` (still guards `base: './'`,
   untouched) and `src/test/cssTokenUsage.test.ts` (still passing;
   unaffected by the untouched `src/renderer/styles/` directory).
-- `npm run lint` → 40 errors (down from 41), fully accounted for above via
+- `pnpm run lint` → 40 errors (down from 41), fully accounted for above via
   a line-by-line diff against a `git stash`-verified baseline run.
 - `rm -rf dist && npx vite build --config vite.renderer.config.ts` → exit
   0. Output tree matches the nested `src/renderer/windows/<name>/
@@ -372,9 +372,9 @@ restores every deleted vanilla file and both config changes in one step —
 but read "Rollback" below first; it is not as simple as Task 11's, because
 the vanilla files are gone from disk, not just unreferenced.
 
-1. Check out this commit on a Mac with the full toolchain, `npm install`
+1. Check out this commit on a Mac with the full toolchain, `pnpm install`
    if needed.
-2. `npm start`. The `prestart` script (`vite build --config
+2. `pnpm start`. The `prestart` script (`vite build --config
    vite.renderer.config.ts`) runs automatically first — confirm you see
    Vite build output (`✓ NN modules transformed`, per-file sizes for both
    `dist/.../menubar/index.html` and `dist/.../preferences/index.html`)
@@ -405,7 +405,7 @@ the vanilla files are gone from disk, not just unreferenced.
    That is no longer true — this task deleted `preferences.html`. The
    correct rollback for **both** windows now is this task's
    `git revert 29e4dfc` (see below), not Task 11's commit.
-6. Quit and relaunch (`npm start` again) and repeat steps 3-5 to catch any
+6. Quit and relaunch (`pnpm start` again) and repeat steps 3-5 to catch any
    first-launch-only vs. warm-launch difference.
 
 ### If the menubar window is blank instead
@@ -426,7 +426,7 @@ Loading renderer from: /path/to/GitLabBar/dist/src/renderer/windows/menubar/inde
 Copy that exact path and run `ls -la "<the path from the log>"`.
 
 - **File does NOT exist** → the `prestart` build never ran or failed
-  silently. Run `npx vite build --config vite.renderer.config.ts`
+  silently. Run `pnpm exec vite build --config vite.renderer.config.ts`
   yourself, check its exit code and output, and retry.
 - **File exists** → not a path/packaging problem. Continue to Step B.
 
@@ -443,7 +443,7 @@ already a commented-out block right after `this.menuWindow.show();`:
 
 Uncomment those three lines (do not add a new call elsewhere — this is
 the correct, existing insertion point). Save, let Forge pick it up (or
-restart `npm start`), reopen the menubar.
+restart `pnpm start`), reopen the menubar.
 Check the DevTools **Console** and **Network** tabs:
 
 - **404s for paths containing `assets/`** (e.g.

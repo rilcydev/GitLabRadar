@@ -170,7 +170,7 @@ sits intact under that root — which `extraResource: ['./dist']` guarantees
 in the packaged case.
 
 **Operational gap worth flagging explicitly**: nothing in `package.json`
-scripts currently produces `dist/` automatically. `npm start` does not run
+scripts currently produces `dist/` automatically. `pnpm start` does not run
 `vite build --config vite.renderer.config.ts` as a pre-step (no `prestart`
 script exists), and electron-forge's own internal Vite pipeline (which
 builds `vite.renderer.config.ts` into `.vite/renderer/main_window/` for its
@@ -178,7 +178,7 @@ own dev-server/packaging bookkeeping) is a *different, unused* output
 location — `tray.ts` never reads from `.vite/renderer/main_window`, only
 from `dist/`. This is consistent with how the menubar has always worked
 (no dev server, `loadFile` from source), and matches what the Task 11
-brief itself directs (manually run `npx vite build` before testing), but it
+brief itself directs (manually run `pnpm exec vite build` before testing), but it
 means: **on the Mac, `dist/` must exist and be up to date before `npm
 start`**, or the preferences window will blank-load a missing file. This
 was true before Task 11 too (in a weaker sense) — it's now load-bearing
@@ -190,12 +190,12 @@ this app that depends on a Vite build artifact instead of raw source.
 - `rm -rf dist && npx vite build --config vite.renderer.config.ts` → exit 0.
   Output tree matches the nested structure the brief describes exactly
   (see above).
-- `npm run typecheck` → exit 0.
-- `npm run lint` → 41 errors, same as the pre-existing baseline. No new
+- `pnpm run typecheck` → exit 0.
+- `pnpm run lint` → 41 errors, same as the pre-existing baseline. No new
   errors from the changed files (`tray.ts`'s 5 pre-existing `any`/
   unused-var/`prefer-const` errors are all on lines untouched by this
   change; `forge.config.ts` has none).
-- `npm run test:run` → 90/90 tests pass (12 files), including
+- `pnpm run test:run` → 90/90 tests pass (12 files), including
   `src/test/viteRendererConfig.test.ts` (still guards `base: './''`,
   untouched).
 - Read the full diff of both changed files; confirmed the menubar's
@@ -239,9 +239,9 @@ window, because the file it depends on is gone. For a working app after
 Task 19, use `git revert 29e4dfc` instead (see the parity checklist's
 "Rollback" section, or Task 19's own report).
 
-1. Check out this commit on a Mac with the full toolchain, `npm install`
+1. Check out this commit on a Mac with the full toolchain, `pnpm install`
    if needed.
-2. `npm start`. As of the fix round below, this now runs a `prestart`
+2. `pnpm start`. As of the fix round below, this now runs a `prestart`
    step (`vite build --config vite.renderer.config.ts`) automatically
    before Electron launches — you should NOT need to build anything by
    hand. Confirm you see Vite build output (module count, `dist/...`
@@ -275,10 +275,10 @@ Copy that exact path and check whether the file exists:
 `ls -la "<the path from the log>"`.
 
 - **File does NOT exist** → the build never ran. With the `prestart`
-  script this should now be impossible when launching via `npm start`,
+  script this should now be impossible when launching via `pnpm start`,
   but if you launched some other way (packaged app, `electron-forge
   start` directly, etc.), the same rule applies: `dist/` must exist and
-  be current. Run `npx vite build --config vite.renderer.config.ts`
+  be current. Run `pnpm exec vite build --config vite.renderer.config.ts`
   yourself and retry.
 - **File exists** → the build is fine. This is not a path/packaging
   problem. Continue to Step B.
@@ -295,7 +295,7 @@ line `this.preferencesWindow.loadFile(prefsPath);`, add:
 this.preferencesWindow.webContents.openDevTools({ mode: 'detach' });
 ```
 
-Rebuild (`npm run package` isn't needed — for `npm start` just save the
+Rebuild (`pnpm run package` isn't needed — for `pnpm start` just save the
 file, Forge will pick it up) and reopen Preferences. Look at the
 DevTools **Console** and **Network** tabs:
 
@@ -393,7 +393,7 @@ step fires before Electron starts.
 Replaced the single "blank window = path problem" checklist entry with a
 three-branch diagnostic (see "Human verification checklist" above):
 missing file at the logged path (build didn't run — now expected to be
-unreachable via `npm start` because of `prestart`, but still checked, and
+unreachable via `pnpm start` because of `prestart`, but still checked, and
 still reachable via other launch methods), 404s under `assets/` in
 DevTools (relative-path/`dist/` shipping bug), and a clean console with
 an empty mounted root (React/preload/contextBridge failure — flagged as
@@ -408,10 +408,10 @@ checklist per the request.
 
 ### Re-verification
 
-- `npm run typecheck` → exit 0.
-- `npm run lint` → 41 errors (unchanged baseline; confirmed by direct
+- `pnpm run typecheck` → exit 0.
+- `pnpm run lint` → 41 errors (unchanged baseline; confirmed by direct
   count, not just eyeballing the summary line).
-- `npm run test:run` → 90/90 tests pass (12 files).
+- `pnpm run test:run` → 90/90 tests pass (12 files).
 
 No changes to `src/main/tray.ts` or `forge.config.ts` in this round, as
 instructed — only `package.json` (`prestart` script) and this report.
