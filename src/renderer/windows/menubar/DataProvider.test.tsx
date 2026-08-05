@@ -25,6 +25,7 @@ function Probe() {
         {data.lastUpdated ? data.lastUpdated.toISOString() : 'null'}
       </span>
       <span data-testid="is-loading">{String(data.isLoading)}</span>
+      <span data-testid="is-untag-loading">{String(data.isUntagLoading)}</span>
       <span data-testid="has-accounts">{String(data.hasAccounts)}</span>
     </div>
   );
@@ -296,6 +297,100 @@ describe('DataProvider', () => {
     // index.html:3873-3874: mergeRequests/pipelines/releases are left
     // untouched by the failure path.
     expect(screen.getByTestId('mr-count')).toHaveTextContent('0');
+  });
+
+  // Task 18 finding, not in the task-13 brief: index.html keeps a SEPARATE
+  // `isUntagLoading` variable (index.html:2338) from `isLoading`, only
+  // flipped false once getUntagProjects() itself settles
+  // (index.html:3866/3869), NOT when the first three fetches settle
+  // (index.html:3855). See DataProvider.tsx's `isUntagLoading` doc comment.
+  describe('isUntagLoading (Task 18)', () => {
+    it('stays true after isLoading flips false, while getUntagProjects is still in flight', async () => {
+      renderWithApi(
+        <DataProvider>
+          <Probe />
+        </DataProvider>,
+        { overrides: { gitlab: { getUntagProjects: () => new Promise(() => {}) } } }
+      );
+
+      // mrs/pipelines/releases resolve (default fake) and flip isLoading
+      // false...
+      await waitFor(() => expect(screen.getByTestId('is-loading')).toHaveTextContent('false'));
+      // ...but the untag fetch never settles, so its own flag must not have
+      // followed isLoading down.
+      expect(screen.getByTestId('is-untag-loading')).toHaveTextContent('true');
+    });
+
+    it('flips false once the initial getUntagProjects() resolves', async () => {
+      renderWithApi(
+        <DataProvider>
+          <Probe />
+        </DataProvider>
+      );
+
+      expect(screen.getByTestId('is-untag-loading')).toHaveTextContent('true');
+      await waitFor(() => expect(screen.getByTestId('is-untag-loading')).toHaveTextContent('false'));
+    });
+
+    // index.html:3867-3869 -- the untag-specific catch also flips
+    // isUntagLoading false, even though untagProjects/untagExcludedCount
+    // are left at their previous values.
+    it('flips false even when the initial getUntagProjects() fails', async () => {
+      renderWithApi(
+        <DataProvider>
+          <Probe />
+        </DataProvider>,
+        { overrides: { gitlab: { getUntagProjects: async () => { throw new Error('boom'); } } } }
+      );
+
+      await waitFor(() => expect(screen.getByTestId('is-untag-loading')).toHaveTextContent('false'));
+      expect(screen.getByTestId('untag-count')).toHaveTextContent('0');
+    });
+
+    // index.html:3873-3876 -- when the OUTER fetch (getMRs) fails, the untag
+    // fetch is never even reached, so nothing else would clear
+    // isUntagLoading except this same catch block.
+    it('flips false even when the initial getMRs() fails, before any untag fetch is attempted', async () => {
+      const getUntagProjects = vi.fn().mockResolvedValue({ untagProjects: [], excludedCount: 0, lastUpdated: new Date() });
+      renderWithApi(
+        <DataProvider>
+          <Probe />
+        </DataProvider>,
+        {
+          overrides: {
+            gitlab: {
+              getMRs: async () => { throw new Error('boom'); },
+              getUntagProjects,
+            },
+          },
+        }
+      );
+
+      await waitFor(() => expect(screen.getByTestId('is-untag-loading')).toHaveTextContent('false'));
+      expect(getUntagProjects).not.toHaveBeenCalled();
+    });
+
+    // index.html:3908 -- a push flips isUntagLoading false too, independent
+    // of the initial fetch (mirrors `data:updated`'s isLoading handling).
+    it('flips false on an untag:dataUpdated push even before the initial fetch would settle', async () => {
+      const { emit } = renderWithApi(
+        <DataProvider>
+          <Probe />
+        </DataProvider>,
+        { overrides: { gitlab: { getUntagProjects: () => new Promise(() => {}) } } }
+      );
+
+      expect(screen.getByTestId('is-untag-loading')).toHaveTextContent('true');
+      act(() =>
+        emit.untagDataUpdated({
+          untagProjects: [{ projectId: 9 } as unknown as UntagProject],
+          excludedCount: 0,
+          lastUpdated: new Date(),
+        })
+      );
+
+      expect(await screen.findByTestId('is-untag-loading')).toHaveTextContent('false');
+    });
   });
 
   // index.html:3914-3923,3960

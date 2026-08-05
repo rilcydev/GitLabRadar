@@ -43,6 +43,23 @@ export interface Data {
   // state, not MR-specific, so it lives here beside `isLoading` rather than
   // being duplicated inside MergeRequestsTab.
   hasAccounts: boolean;
+  // Added in Task 18 (not in the task-13 brief -- found while implementing
+  // UntagTab's loading gate, index.html:3726-3731). The vanilla app keeps a
+  // SEPARATE `isUntagLoading` module-level variable (index.html:2338) from
+  // `isLoading` above: `loadData()` (index.html:3845-3883) resolves
+  // getMRs/getPipelines/getReleases FIRST and flips `isLoading` false in
+  // that same synchronous stretch, THEN starts a nested fetch for
+  // getUntagProjects() and only flips `isUntagLoading` false once THAT
+  // settles (success at :3866 or failure at :3869) -- and again on every
+  // `untag:dataUpdated` push (:3908), mirroring `isLoading`'s
+  // `data:updated` handling at :3892. Reusing the shared `isLoading` flag
+  // for UntagTab would flip its spinner off as soon as the first three
+  // fetches settle, while `untagProjects` is still the initial `[]` and
+  // `untagExcludedCount` is still `0` -- rendering the "All Tagged" empty
+  // state for one render (or one whole poll interval, if getUntagProjects
+  // is slow) instead of the loading spinner index.html actually shows
+  // during that window. See task-18-report.md.
+  isUntagLoading: boolean;
 }
 
 const initialData: Data = {
@@ -56,6 +73,7 @@ const initialData: Data = {
   lastUpdated: null,
   isLoading: true,
   hasAccounts: false,
+  isUntagLoading: true,
 };
 
 const DataContext = createContext<Data | null>(null);
@@ -191,20 +209,40 @@ export function DataProvider({ children }: { children: ReactNode }) {
             ...prev,
             untagProjects: untagData?.untagProjects || [],
             untagExcludedCount: untagData?.excludedCount || 0,
+            // index.html:3866
+            isUntagLoading: false,
           }));
         } catch (e) {
-          // index.html:3867-3869
+          // index.html:3867-3869. The source's catch also flips
+          // isUntagLoading false (:3869) even though untagProjects/
+          // untagExcludedCount are left untouched -- reproduced here for
+          // the same reason the outer catch below still flips isLoading:
+          // a permanent untag spinner after a failed fetch would be a
+          // behaviour change, not a port.
           console.error('Untag load error:', e);
+          if (cancelled || receivedUntagPush) return;
+          setData((prev) => ({ ...prev, isUntagLoading: false }));
         }
       } catch (err) {
-        // index.html:3873-3875. The source's catch also leaves
-        // mergeRequests/pipelines/releases untouched, but it DOES still flip
-        // isLoading false (index.html:3875) -- reproduced here; a permanent
-        // spinner after a failed initial load would be a behaviour change,
-        // not a port.
+        // index.html:3873-3876. The source's catch also leaves
+        // mergeRequests/pipelines/releases/untagProjects untouched, but it
+        // DOES still flip BOTH isLoading (:3875) and isUntagLoading (:3876)
+        // -- the untag fetch above is never even reached when getMRs/etc.
+        // itself throws, so nothing else would ever clear isUntagLoading in
+        // that case. Reproduced here; a permanent spinner after a failed
+        // initial load would be a behaviour change, not a port.
         console.error('Load error:', err);
         if (cancelled || receivedDataPush) return;
-        setData((prev) => ({ ...prev, isLoading: false }));
+        setData((prev) => ({
+          ...prev,
+          isLoading: false,
+          // Guarded independently of receivedDataPush: an untag:dataUpdated
+          // push (a distinct event) may have already landed and set this
+          // false on its own -- this write is then a harmless no-op, not a
+          // stale overwrite, since it never touches untagProjects/
+          // untagExcludedCount themselves.
+          isUntagLoading: receivedUntagPush ? prev.isUntagLoading : false,
+        }));
       }
     }
 
@@ -266,6 +304,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         ...prev,
         untagProjects: payload?.untagProjects || [],
         untagExcludedCount: payload?.excludedCount || 0,
+        // index.html:3908
+        isUntagLoading: false,
       }));
     });
 

@@ -1,0 +1,338 @@
+/*
+ * Ported from src/renderer/index.html's "UNTAG TAB" block (:1994-2184) and,
+ * for the loading state only, the shared "LOADING STATE" block
+ * (:1752-1778, duplicated per-tab -- same as ReleasesTab.module.css/
+ * PipelinesTab.module.css).
+ *
+ * Deliberately does NOT reuse `ItemCard` (src/renderer/shared/ItemCard/) --
+ * unlike MR/pipeline/release rows, `.untag-item` is its own from-scratch
+ * shell in the source, not `.item`: different padding (12px 14px vs
+ * `.item`'s 14px 16px), different radius (--radius-md vs --radius-lg),
+ * `align-items: flex-start` (`.item` already has that part in common), a
+ * DIFFERENT hover border color/opacity (rgba(139,92,246,0.3) vs `.item`'s
+ * 0.2) plus a `box-shadow` on hover `.item` doesn't have, and critically NO
+ * `::before` accent bar at all -- `.item`'s permanent gradient-purple bar
+ * (ItemCard.module.css) has no equivalent anywhere in the untag CSS block.
+ * Reusing ItemCard here would render a hover accent bar untag items never
+ * had. See task-18-report.md; POReleaseRow.tsx (Task 17) made the identical
+ * call for `.po-release-item`, its own separately-styled shell.
+ *
+ * --bg-card and --shadow-md have no bare form (Task 6 token rule) -- this
+ * is the menubar window, so the -menubar variants are used throughout.
+ * --shadow-sm and --radius-sm/-md have no split form at all (bare in both
+ * windows).
+ */
+
+/* ═══════════════════════════════════════════
+   LOADING STATE -- index.html:1752-1778
+   ═══════════════════════════════════════════ */
+.loadingState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.loadingSpinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--glass-border);
+  border-top-color: var(--accent-purple);
+  border-radius: 50%;
+  animation: loading-spin 0.8s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loadingText {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* ═══════════════════════════════════════════
+   EXCLUSION NOTICE -- index.html:2157-2184
+   ═══════════════════════════════════════════ */
+.exclusionNotice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.15);
+  border-radius: var(--radius-sm);
+  margin-bottom: 12px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* index.html:2170-2180 -- the source styles the reset button via a bare
+   descendant-element selector (`.untag-exclusion-notice button`), not a
+   dedicated button class -- the button itself carries no class in the
+   source (`<button id="resetUntagExclusionsBtn">`). Reproduced the same
+   way: UntagTab.tsx's button has no className, just this nested selector. */
+.exclusionNotice button {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 6px;
+  color: var(--accent-orange);
+  font-size: 10px;
+  font-weight: 500;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.exclusionNotice button:hover {
+  background: rgba(245, 158, 11, 0.25);
+}
+
+/* ═══════════════════════════════════════════
+   ITEM SHELL -- index.html:1997-2015
+   ═══════════════════════════════════════════ */
+.untagItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--bg-card-menubar);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-bottom: 8px;
+  position: relative;
+}
+
+.untagItem:hover {
+  background: var(--bg-card-hover-menubar);
+  border-color: rgba(139, 92, 246, 0.3);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ═══════════════════════════════════════════
+   ITEM ICON -- index.html:2017-2032
+   ═══════════════════════════════════════════ */
+.itemIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--gradient-orange);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.itemIcon svg {
+  width: 16px;
+  height: 16px;
+  fill: white;
+}
+
+/* ═══════════════════════════════════════════
+   ITEM CONTENT / TITLE / SUBTITLE -- index.html:2034-2054
+   ═══════════════════════════════════════════ */
+.itemContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.itemTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.itemSubtitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 3px;
+  flex-wrap: wrap;
+}
+
+/* ═══════════════════════════════════════════
+   TAG NAME / COMMITS COUNT -- index.html:2056-2080
+   ═══════════════════════════════════════════ */
+.tagName {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--accent-orange);
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  padding: 1px 6px;
+  border-radius: 4px;
+  min-width: 72px;
+  text-align: center;
+  display: inline-block;
+}
+
+.commitsCount {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-blue);
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  padding: 1px 6px;
+  border-radius: 4px;
+  min-width: 80px;
+  text-align: center;
+  display: inline-block;
+}
+
+/* ═══════════════════════════════════════════
+   TIME BADGE -- index.html:1353-1385 (the shared `.item-time-badge` block,
+   duplicated here rather than shared -- same reasoning as
+   ReleasesTab.module.css's duplicated loading-state/dismissed-notice
+   blocks), plus its untag-specific override at :2082-2086.
+   ═══════════════════════════════════════════ */
+.itemTimeBadge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+/* index.html:2082-2086 -- `.untag-item-subtitle .item-time-badge`. */
+.itemSubtitle .itemTimeBadge {
+  min-width: 36px;
+  text-align: center;
+  display: inline-block;
+}
+
+.badgeFresh {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.badgeWarning {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.badgeAlert {
+  background: rgba(249, 115, 22, 0.15);
+  color: #f97316;
+  border: 1px solid rgba(249, 115, 22, 0.3);
+}
+
+.badgeDanger {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.badgeCritical {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  animation: badgePulse 2s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   EXPAND BUTTON -- index.html:2088-2104
+   ═══════════════════════════════════════════ */
+.expandBtn {
+  background: none;
+  border: none;
+  color: var(--accent-purple);
+  font-size: 10px;
+  font-weight: 500;
+  padding: 0;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  white-space: nowrap;
+  opacity: 0.8;
+}
+
+.expandBtn:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+/* ═══════════════════════════════════════════
+   DETAIL PANEL -- index.html:2106-2117
+   ═══════════════════════════════════════════ */
+.detailPanel {
+  display: none;
+  margin-top: 10px;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--glass-border);
+}
+
+/* index.html:2115-2117 -- `.untag-detail-panel.expanded`. Written as a
+   standalone class rather than a `.detailPanel.detailPanelExpanded`
+   compound selector so it stays a CSS-Modules-friendly single class name;
+   it still wins the cascade tie against `.detailPanel` above (equal
+   specificity, later source order) the same way `.itemIconRelease svg`
+   wins against the base `.itemIcon svg` in ReleasesTab.module.css. Must
+   stay declared AFTER `.detailPanel`. */
+.detailPanelExpanded {
+  display: block;
+}
+
+/* ═══════════════════════════════════════════
+   COMMIT ITEM -- index.html:2119-2155
+   ═══════════════════════════════════════════ */
+.commitItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.commitItem:last-child {
+  border-bottom: none;
+}
+
+.commitSha {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 10px;
+  color: var(--accent-purple);
+  background: rgba(139, 92, 246, 0.1);
+  padding: 1px 5px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.commitTitle {
+  font-size: 11px;
+  color: var(--text-primary);
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.commitAuthor {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}

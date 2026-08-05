@@ -7,6 +7,7 @@ import { MergeRequestsTab } from '../../features/merge-requests/MergeRequestsTab
 import { PipelinesTab } from '../../features/pipelines/PipelinesTab';
 import { POView } from '../../features/releases/POView';
 import { ReleasesTab } from '../../features/releases/ReleasesTab';
+import { UntagTab } from '../../features/untag/UntagTab';
 import { useData, useMRDismissal, usePipelineDismissal, useReleaseDismissal } from './DataProvider';
 import styles from './MenubarApp.module.css';
 
@@ -292,7 +293,9 @@ export function MenubarApp() {
         <div id="releases-content" className={paneClass(isDevPaneActive('releases'))}>
           <ReleasesTab />
         </div>
-        <div id="untag-content" className={paneClass(isDevPaneActive('untag'))} />
+        <div id="untag-content" className={paneClass(isDevPaneActive('untag'))}>
+          <UntagTab />
+        </div>
         <div id="po-content" className={paneClass(viewMode === 'productOwner')}>
           <POView viewMode={viewMode} />
         </div>
