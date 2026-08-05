@@ -17,14 +17,6 @@ const ICONS_PATH = app.isPackaged
   ? path.join(process.resourcesPath, 'assets/icons')
   : path.join(app.getAppPath(), 'assets/icons');
 
-// Legacy static-HTML renderer root. Still used by the menubar window only
-// (Task 19 migrates it and retires this): src/renderer/index.html is plain
-// HTML/JS, not bundled, so it can be loaded straight from source in dev and
-// from a flat copied directory when packaged.
-const RENDERER_PATH = app.isPackaged
-  ? path.join(process.resourcesPath, 'renderer')
-  : path.join(app.getAppPath(), 'src/renderer');
-
 // Root of the Vite-built React renderer bundle (see vite.renderer.config.ts,
 // which sets `base: './'`). Because of that relative base, every emitted
 // entry HTML file resolves its <script>/<link> tags relative to its OWN
@@ -197,8 +189,8 @@ class TrayManager {
       }
     });
 
-    // Load the HTML file
-    const indexPath = path.join(RENDERER_PATH, 'index.html');
+    // Load the built React bundle
+    const indexPath = getBuiltRendererEntry('menubar');
     console.log('Loading renderer from:', indexPath);
     this.menuWindow.loadFile(indexPath);
 

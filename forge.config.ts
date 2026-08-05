@@ -31,18 +31,12 @@ const config: ForgeConfig = {
     },
     extraResource: [
       './assets',
-      // Vanilla renderer sources. Still required at runtime because the
-      // menubar window (src/main/tray.ts) loads src/renderer/index.html
-      // directly and isn't bundled. Task 19 switches the menubar to the
-      // React bundle too and removes this entry along with the vanilla
-      // sources it ships.
-      './src/renderer',
       // Vite-built React renderer (see vite.renderer.config.ts). Ship the
       // whole `dist/` tree as one unit -- its entry HTML files reference
       // assets with relative paths several directories up, so copying only
       // part of this tree (or flattening it) silently breaks asset
-      // resolution at runtime. Currently only the preferences window
-      // (src/main/tray.ts) loads from here.
+      // resolution at runtime. Both the menubar and preferences windows
+      // (src/main/tray.ts) load from here.
       './dist',
     ],
   },
