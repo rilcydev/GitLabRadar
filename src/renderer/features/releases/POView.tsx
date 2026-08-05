@@ -5,6 +5,11 @@ import type { Release } from '@/shared/types';
 // src/renderer/api/FakeApi.ts for the same pre-existing gap).
 import { useApi } from '../../api/ApiContext';
 import { useData } from '../../windows/menubar/DataProvider';
+// Type-only import from MenubarApp.tsx, which imports POView itself --
+// erased at compile time, so this isn't a runtime circular dependency, only
+// a type one (fix round 1: needed so `useHasWatchedProjects` can key its
+// reload effect on `viewMode`, see its doc comment below).
+import type { ViewMode } from '../../windows/menubar/MenubarApp';
 import { EmptyState } from '../../shared/EmptyState/EmptyState';
 import { POReleaseRow } from './POReleaseRow';
 import styles from './POView.module.css';
@@ -22,25 +27,24 @@ const PER_PAGE = 5;
 
 /**
  * index.html:2334,3939-3950 (`hasWatchedProjects`, `loadWatchedProjects`) --
- * loaded once at mount and again on every `data:updated` push
- * (index.html:3897). `setViewMode` (MenubarApp.tsx) ALSO calls
- * `loadWatchedProjects()` directly (index.html:2394) before `applyViewMode`,
- * but since `POView` stays mounted at all times (see MenubarApp.tsx's "all
- * panes stay mounted" comment) rather than being freshly created when the
- * user switches into product-owner mode, reproducing that second call site
- * would mean keying this effect on `viewMode` too -- an activation-trigger
- * this codebase deliberately avoids elsewhere (effects run on every
- * `data:updated`, not on tab/mode activation). Reloading on every data
- * refresh (below) already covers the overwhelmingly common case (changing
- * watched projects in Preferences triggers a polling refresh, which pushes
- * `data:updated` shortly after); the narrow gap -- toggling into PO view
- * between a Preferences change and the next refresh -- is a difference from
- * vanilla, called out in task-17-report.md.
+ * loaded once at mount, again on every `data:updated` push
+ * (index.html:3897), and again on every `setViewMode` call
+ * (index.html:2394, BEFORE `applyViewMode()` runs) -- vanilla reloads this
+ * unconditionally whenever the mode actually changes, regardless of which
+ * direction. `POView` stays mounted at all times (see MenubarApp.tsx's "all
+ * panes stay mounted" comment) rather than being freshly created on
+ * entering product-owner mode, so this effect takes `viewMode` itself as a
+ * third dependency (fix round 1) to reproduce that third call site: since
+ * `viewMode` is a plain prop threaded down from `MenubarApp`'s own
+ * `useViewMode()`, and `setViewMode` is a no-op (skips the state update
+ * entirely, index.html:2384) when the target mode already matches, this
+ * value only actually changes on a REAL mode transition -- so a no-op
+ * toggle can't retrigger this effect either, matching the source's guard.
  *
  * Local to `POView` (not lifted into `DataProvider` alongside `hasAccounts`)
  * because this is its only consumer.
  */
-function useHasWatchedProjects(): boolean {
+function useHasWatchedProjects(viewMode: ViewMode): boolean {
   const api = useApi();
   const data = useData();
   const [hasWatchedProjects, setHasWatchedProjects] = useState(false);
@@ -61,9 +65,19 @@ function useHasWatchedProjects(): boolean {
     return () => {
       cancelled = true;
     };
-  }, [api, data.lastUpdated]);
+  }, [api, data.lastUpdated, viewMode]);
 
   return hasWatchedProjects;
+}
+
+export interface POViewProps {
+  /**
+   * Threaded down from `MenubarApp`'s own `useViewMode()` (fix round 1) --
+   * `POView` doesn't call `useViewMode()` itself, which would create a
+   * second, independent piece of state out of sync with `MenubarApp`'s;
+   * see `useHasWatchedProjects`'s doc comment for why this prop exists.
+   */
+  viewMode: ViewMode;
 }
 
 /**
@@ -74,10 +88,10 @@ function useHasWatchedProjects(): boolean {
  * directly, with NO dismissal filtering -- `renderPOView` never references
  * `dismissedReleaseIds` anywhere in the source.
  */
-export function POView() {
+export function POView({ viewMode }: POViewProps) {
   const api = useApi();
   const data = useData();
-  const hasWatchedProjects = useHasWatchedProjects();
+  const hasWatchedProjects = useHasWatchedProjects(viewMode);
 
   // index.html:2336 `poFilterProject`.
   const [filterProject, setFilterProject] = useState('all');

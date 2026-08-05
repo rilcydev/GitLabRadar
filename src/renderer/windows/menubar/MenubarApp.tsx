@@ -294,7 +294,7 @@ export function MenubarApp() {
         </div>
         <div id="untag-content" className={paneClass(isDevPaneActive('untag'))} />
         <div id="po-content" className={paneClass(viewMode === 'productOwner')}>
-          <POView />
+          <POView viewMode={viewMode} />
         </div>
       </div>
 

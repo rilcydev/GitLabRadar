@@ -5,14 +5,16 @@ import type { Release } from '@/shared/types';
 // Relative imports: eslint's import/no-unresolved has no TS-aware resolver
 // for the `@/*` alias on value imports (see src/test/renderWithApi.tsx and
 // src/renderer/api/FakeApi.ts for the same pre-existing gap).
+import { ApiProvider } from '../../api/ApiContext';
 import { renderWithApi } from '../../../test/renderWithApi';
 import { DataProvider } from '../../windows/menubar/DataProvider';
+import type { ViewMode } from '../../windows/menubar/MenubarApp';
 import { POView } from './POView';
 
-function renderView(overrides?: Parameters<typeof renderWithApi>[1]) {
+function renderView(overrides?: Parameters<typeof renderWithApi>[1], viewMode: ViewMode = 'productOwner') {
   return renderWithApi(
     <DataProvider>
-      <POView />
+      <POView viewMode={viewMode} />
     </DataProvider>,
     overrides
   );
@@ -95,6 +97,63 @@ describe('POView', () => {
       renderView({ overrides: { app: { showPreferences } } });
       await userEvent.click(await screen.findByText('Configure projects'));
       expect(showPreferences).toHaveBeenCalled();
+    });
+  });
+
+  // Fix round 1 -- index.html:2394: `setViewMode()` calls
+  // `loadWatchedProjects()` directly, BEFORE `applyViewMode()`, every time
+  // the mode actually changes (guarded by the no-op check at :2384).
+  // `POView` doesn't call `setViewMode` itself; `viewMode` is threaded down
+  // from `MenubarApp` as a prop, so these tests drive the same effect via
+  // `rerender` with a new/unchanged prop value, wrapped in the SAME
+  // `ApiProvider`/`DataProvider` instances (not a fresh `renderView`, which
+  // would remount everything and trivially "reload" for the wrong reason).
+  describe('hasWatchedProjects reload on view-mode change (index.html:2394)', () => {
+    it('reloads watchedProjectIds when the view mode actually changes', async () => {
+      const configGet = vi.fn(async () => [] as never);
+      const { api, rerender } = renderView({ overrides: { config: { get: configGet } } }, 'developer');
+
+      // Two calls happen before any view-mode change at all: the initial
+      // mount, and DataProvider's OWN initial data fetch settling (which
+      // flips `data.lastUpdated` from null to a real Date -- an existing,
+      // unrelated trigger for this same effect's `data.lastUpdated`
+      // dependency, index.html:3897). Both must settle before a baseline is
+      // meaningful, or a race between that settle and the rerender below
+      // could inflate the post-rerender count for the wrong reason.
+      await screen.findByText('No projects configured');
+      await waitFor(() => expect(configGet).toHaveBeenCalledTimes(2));
+
+      rerender(
+        <ApiProvider api={api}>
+          <DataProvider>
+            <POView viewMode="productOwner" />
+          </DataProvider>
+        </ApiProvider>
+      );
+
+      await waitFor(() => expect(configGet).toHaveBeenCalledTimes(3));
+    });
+
+    it('does NOT reload watchedProjectIds when the view mode is set to the same value (no-op)', async () => {
+      const configGet = vi.fn(async () => [] as never);
+      const { api, rerender } = renderView({ overrides: { config: { get: configGet } } }, 'productOwner');
+
+      // Same two pre-existing calls as above (mount + lastUpdated settle)
+      // must land before the rerender, for the same reason.
+      await screen.findByText('No projects configured');
+      await waitFor(() => expect(configGet).toHaveBeenCalledTimes(2));
+
+      rerender(
+        <ApiProvider api={api}>
+          <DataProvider>
+            <POView viewMode="productOwner" />
+          </DataProvider>
+        </ApiProvider>
+      );
+
+      // Give any (incorrect) re-fire a tick, then confirm it didn't happen.
+      await act(async () => {});
+      expect(configGet).toHaveBeenCalledTimes(2);
     });
   });
 
