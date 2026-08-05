@@ -29,11 +29,11 @@ const ICONS_PATH = app.isPackaged
 // just a blank window -- so this is the one part of tray.ts that must not
 // be "simplified".
 //
-// In dev, this points at the project's own `dist/` (produced by running
-// `npx vite build --config vite.renderer.config.ts`; nothing currently
-// triggers that build automatically as part of `npm start`). In a packaged
-// app, it points at the `dist/` folder copied in by forge.config.ts's
-// `extraResource`.
+// In dev, this points at the project's own `dist/` (produced by
+// `npx vite build --config vite.renderer.config.ts`, which runs
+// automatically before `npm start` via the `prestart` script in
+// package.json). In a packaged app, it points at the `dist/` folder
+// copied in by forge.config.ts's `extraResource`.
 const BUILT_RENDERER_ROOT = app.isPackaged
   ? path.join(process.resourcesPath, 'dist')
   : path.join(app.getAppPath(), 'dist');
