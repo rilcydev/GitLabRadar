@@ -1477,12 +1477,15 @@ Behaviour: grouping into sections by role (the `renderSection` calls in `renderM
 ## Task 16: Pipelines tab
 
 **Files:**
-- Create: `src/renderer/features/pipelines/{PipelinesTab.tsx,PipelinesTab.module.css,PipelinesTab.test.tsx,PipelineRow.tsx,PipelineRow.module.css,jobIcon.tsx}`
+- Create: `src/renderer/features/pipelines/{PipelinesTab.tsx,PipelinesTab.module.css,PipelinesTab.test.tsx,PipelineRow.tsx,PipelineRow.module.css}`
+- Create: `src/renderer/windows/menubar/createDismissalContext.tsx` — a factory backing all
+  three dismissible collections. Migrate Task 15's hand-written `useMRDismissal()` onto it;
+  Task 15's tests must pass **unchanged**, or the refactor changed behaviour.
 - Modify: `src/renderer/windows/menubar/MenubarApp.tsx`
 
 **Interfaces:**
 - Consumes: `useData()`, `useApi()`, shared components, `format.ts`
-- Produces: `<PipelinesTab />`, `getJobIcon(status: string): ReactNode`
+- Produces: `<PipelinesTab />`, `createDismissalContext`, `usePipelineDismissal()`
 
 **Source to port:** `index.html:2885-3112`.
 
@@ -1499,9 +1502,19 @@ render. Parity is about observable behaviour; this has none.
 without checking their *callers*. A defined function is not a used function. Before
 listing any function as behaviour to reproduce, grep for its call sites.
 
-Behaviour: project path as title (`pipeline.projectPath || pipeline.projectName || 'Pipeline'`, `index.html:3017` — reproduce the fallback chain exactly), triggering user avatar, job list with status icons, dismiss via `gitlab.dismissPipeline`, `failedPipelineMaxAge` filtering.
+Behaviour: project path as title (`pipeline.projectPath || pipeline.projectName || 'Pipeline'`, `index.html:3017` — reproduce the fallback chain exactly), triggering user avatar, job list with status dots, dismiss via `gitlab.dismissPipeline`, and the `#pipelineCount` badge filtered by dismissed pipelines as vanilla does.
 
-- [ ] **Step 1: Write the failing tests** — one per status in the `getJobIcon` mapping, plus the title fallback chain (all three branches), plus dismiss
+**`failedPipelineMaxAge` filtering is NOT renderer behaviour** — an earlier draft listed it
+here. It happens server-side in `src/main/services/polling.ts:164-176`, applied only to
+failed pipelines before they are pushed. `renderPipelines` never compares ages. Do not
+reproduce it client-side.
+
+**The triggering-user avatar is a plain `<img>`, not the shared `Avatar`.** `index.html:2988-2990`
+renders literally nothing when `avatar_url` is absent — no placeholder — and `:1698-1721`
+sizes it at 18px with no border, a third size `Avatar` does not have. Using `Avatar` here
+would be a bug, not a port.
+
+- [ ] **Step 1: Write the failing tests** — the title fallback chain (all three branches), dismiss, the badge filter, and the job-chip `webUrl` guard (`index.html:3062-3064` no-ops on a falsy url; `webUrl: ''` is in-contract and the test factory already accepts it as an override)
 - [ ] **Step 2: Run to confirm failure** — `npm run test:run -- Pipelines`
 - [ ] **Step 3: Implement**
 - [ ] **Step 4: Mount in `MenubarApp` for the `pipelines` tab**
