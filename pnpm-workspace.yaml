@@ -39,6 +39,23 @@ allowBuilds:
   # Flip to true if Windows packaging is ever done on a Windows machine.
   electron-winstaller: false
 
+  # The next two are macOS-only native modules and therefore do not install on
+  # Linux at all — they surface only when someone runs `pnpm install` on a Mac,
+  # which is where the DMG actually gets built.
+  #
+  #   @electron-forge/maker-dmg -> appdmg -> fs-xattr
+  #   @electron-forge/maker-dmg -> appdmg -> ds-store -> macos-alias
+  #
+  # appdmg is what produces the .dmg, so both are needed for macOS packaging:
+  # fs-xattr writes extended file attributes, macos-alias creates the alias to
+  # /Applications that makes the drag-to-install window work. Both compile
+  # native bindings, so blocking their scripts leaves them unusable.
+  #
+  # Not verifiable from Linux — these were added from a Mac's install failure,
+  # and only a Mac can confirm the build succeeds.
+  fs-xattr: true
+  macos-alias: true
+
 # Fail the install outright if any dependency has a lifecycle script that is
 # neither allowed above nor explicitly ignored below. Deliberately loud: this
 # project has been bitten before by builds being skipped in silence, and an
