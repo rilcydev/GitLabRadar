@@ -23,6 +23,7 @@ export interface AppConfig {
   theme: 'system' | 'light' | 'dark';
   failedPipelineMaxAge: number; // in hours, 0 = no limit
   showUnassignedMRs: boolean;
+  showCommentedMRs: boolean; // show open MRs you have commented on
   dismissedPipelines: number[]; // IDs of hidden pipelines
   dismissedMRs: number[]; // IDs of hidden MRs
   dismissedReleases: number[]; // IDs of hidden releases
@@ -47,6 +48,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   theme: 'system',
   failedPipelineMaxAge: 24, // 24 hours by default
   showUnassignedMRs: false,
+  showCommentedMRs: false,
   dismissedPipelines: [],
   dismissedMRs: [],
   dismissedReleases: [],

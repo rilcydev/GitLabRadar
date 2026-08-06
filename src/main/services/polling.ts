@@ -149,6 +149,19 @@ class PollingService {
             }
           }
 
+          // Fetch open MRs the user has commented on if the option is enabled.
+          const showCommentedMRs = config.get('showCommentedMRs');
+          if (showCommentedMRs) {
+            const commentedMRs = await client.getCommentedMergeRequests();
+            // Don't add MRs already shown under another role (author/assignee/…).
+            const existingIds = new Set(allMergeRequests.map(mr => mr.id));
+            const freshCommented = commentedMRs.filter(mr => !existingIds.has(mr.id));
+            await enrichApprovals(freshCommented, (projectId, iid) =>
+              client.getMergeRequestApprovals(projectId, iid)
+            );
+            allMergeRequests.push(...freshCommented);
+          }
+
           // Fetch user's active pipelines (running/pending on recent projects)
           const userActivePipelines = await client.getUserActivePipelines();
 

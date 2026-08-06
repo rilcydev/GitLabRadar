@@ -28,6 +28,7 @@ const SECTIONS: { title: string; role: UserRole; iconBackground: string }[] = [
   { title: 'No reviewer', role: 'unassigned', iconBackground: 'var(--gradient-red)' },
   { title: 'Assigned', role: 'assignee', iconBackground: 'var(--gradient-blue)' },
   { title: 'Created by me', role: 'author', iconBackground: 'var(--gradient-green)' },
+  { title: 'Commented', role: 'commented', iconBackground: 'var(--gradient-purple)' },
 ];
 
 // index.html:2772 -- one fixed icon reused for every section, regardless

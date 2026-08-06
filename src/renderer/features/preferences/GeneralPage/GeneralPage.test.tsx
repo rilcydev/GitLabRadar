@@ -51,6 +51,25 @@ describe('GeneralPage', () => {
     });
   });
 
+  it('loads showCommentedMRs from config.getAll() and writes it back on change', async () => {
+    const { api, container } = renderWithApi(<GeneralPage />, {
+      overrides: { config: { getAll: async () => ({ ...(await realDefaultConfig()), showCommentedMRs: false }) } },
+    });
+
+    const checkbox = await waitFor(() => {
+      const el = container.querySelector<HTMLInputElement>('#showCommentedMRs');
+      expect(el).not.toBeNull();
+      expect(el?.checked).toBe(false);
+      return el as HTMLInputElement;
+    });
+
+    await userEvent.click(checkbox);
+    expect(checkbox.checked).toBe(true);
+    await waitFor(async () => {
+      expect(await api.config.get('showCommentedMRs')).toBe(true);
+    });
+  });
+
   it('loads viewMode from config.getAll() and writes it back as a string on change (preferences.html:895-898)', async () => {
     const { api, container } = renderWithApi(<GeneralPage />, {
       overrides: { config: { getAll: async () => ({ ...(await realDefaultConfig()), viewMode: 'developer' }) } },
@@ -282,6 +301,7 @@ async function realDefaultConfig() {
     theme: 'system' as const,
     failedPipelineMaxAge: 24,
     showUnassignedMRs: false,
+    showCommentedMRs: false,
     dismissedPipelines: [],
     dismissedMRs: [],
     dismissedReleases: [],

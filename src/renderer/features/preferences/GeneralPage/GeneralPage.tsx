@@ -25,6 +25,7 @@ export function GeneralPage() {
   const [refreshInterval, setRefreshInterval] = useState(60000);
   const [failedPipelineMaxAge, setFailedPipelineMaxAge] = useState(24);
   const [showUnassignedMRs, setShowUnassignedMRs] = useState(false);
+  const [showCommentedMRs, setShowCommentedMRs] = useState(false);
   const [notifications, setNotifications] = useState<AppConfig['notifications']>({
     enabled: true,
     newMRAssigned: true,
@@ -48,6 +49,7 @@ export function GeneralPage() {
           // reload; only null/undefined falls back to the 24h default.
           setFailedPipelineMaxAge(config.failedPipelineMaxAge ?? 24);
           setShowUnassignedMRs(config.showUnassignedMRs || false);
+          setShowCommentedMRs(config.showCommentedMRs || false);
           if (config.notifications) setNotifications(config.notifications);
         }
       } catch (err) {
@@ -106,6 +108,15 @@ export function GeneralPage() {
       const checked = e.target.checked;
       setShowUnassignedMRs(checked);
       await api.config.set('showUnassignedMRs', checked);
+    },
+    [api]
+  );
+
+  const handleShowCommentedMRsChange = useCallback(
+    async (e: ChangeEvent<HTMLInputElement>) => {
+      const checked = e.target.checked;
+      setShowCommentedMRs(checked);
+      await api.config.set('showCommentedMRs', checked);
     },
     [api]
   );
@@ -244,6 +255,22 @@ export function GeneralPage() {
               id="showUnassignedMRs"
               checked={showUnassignedMRs}
               onChange={(e) => void handleShowUnassignedMRsChange(e)}
+            />
+            <span className={styles.toggleSlider} />
+          </label>
+        </div>
+
+        <div className={styles.toggleRow}>
+          <div className={styles.toggleInfo}>
+            <div className={styles.toggleLabel}>Commented MRs</div>
+            <div className={styles.toggleDesc}>Show open MRs you have commented on</div>
+          </div>
+          <label className={styles.toggle}>
+            <input
+              type="checkbox"
+              id="showCommentedMRs"
+              checked={showCommentedMRs}
+              onChange={(e) => void handleShowCommentedMRsChange(e)}
             />
             <span className={styles.toggleSlider} />
           </label>

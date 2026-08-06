@@ -1,4 +1,4 @@
-export type UserRole = 'author' | 'assignee' | 'reviewer' | 'mentioned' | 'unassigned';
+export type UserRole = 'author' | 'assignee' | 'reviewer' | 'mentioned' | 'unassigned' | 'commented';
 
 export interface MergeRequestAuthor {
   id: number;

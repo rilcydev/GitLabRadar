@@ -176,6 +176,7 @@ describe('ProjectsPage', () => {
             theme: 'system',
             failedPipelineMaxAge: 24,
             showUnassignedMRs: false,
+            showCommentedMRs: false,
             dismissedPipelines: [],
             dismissedMRs: [],
             dismissedReleases: [],

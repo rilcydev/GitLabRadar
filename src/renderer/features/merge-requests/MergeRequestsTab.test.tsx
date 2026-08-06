@@ -104,6 +104,13 @@ async function pushMRs(emit: ReturnType<typeof renderTab>['emit'], mergeRequests
 }
 
 describe('MergeRequestsTab', () => {
+  it('renders a "Commented" section for MRs I have commented on', async () => {
+    const { emit } = renderTab();
+    await pushMRs(emit, [makeMR({ userRole: 'commented', title: 'A commented MR' })]);
+    expect(await screen.findByText('Commented')).toBeInTheDocument();
+    expect(screen.getByText('A commented MR')).toBeInTheDocument();
+  });
+
   it('filters the member picker by name/username search', async () => {
     const members = [
       { id: 1, username: 'alice', name: 'Alice Martin', avatar_url: '' },

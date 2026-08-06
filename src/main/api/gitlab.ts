@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { mapApprovals, GitLabApprovalsResponse, ApprovalState } from './approvals';
+import { extractCommentedMrRefs, type GitLabEvent } from './commentedMrs';
 import {
   GitLabUser,
   GitLabMergeRequestResponse,
@@ -201,6 +202,45 @@ export class GitLabClient {
     }
 
     return allMRs;
+  }
+
+  /**
+   * Open merge requests the current user has commented on. Uses the activity
+   * events (`action=commented`) to find them -- there is no MR list filter for
+   * "I participated" -- then fetches each one and keeps only the open ones
+   * (not merged/closed). Best-effort: a failed event fetch or per-MR fetch
+   * yields fewer results rather than throwing.
+   */
+  async getCommentedMergeRequests(): Promise<MergeRequest[]> {
+    try {
+      const response = await this.client.get<GitLabEvent[]>('/events', {
+        params: { action: 'commented', per_page: 100 },
+      });
+      const refs = extractCommentedMrRefs(response.data);
+
+      const results: MergeRequest[] = [];
+      for (const ref of refs) {
+        try {
+          const mrRes = await this.client.get<GitLabMergeRequestResponse>(
+            `/projects/${ref.projectId}/merge_requests/${ref.iid}`
+          );
+          if (mrRes.data.state !== 'opened') continue;
+          const mr = this.transformMergeRequest(mrRes.data, 'commented');
+          const project = await this.getProject(ref.projectId);
+          if (project) {
+            mr.projectName = project.name;
+            mr.projectPath = project.path_with_namespace;
+          }
+          results.push(mr);
+        } catch (error) {
+          console.error(`Failed to fetch commented MR ${ref.projectId}!${ref.iid}:`, error);
+        }
+      }
+      return results;
+    } catch (error) {
+      console.error('Failed to fetch commented merge requests:', error);
+      return [];
+    }
   }
 
   private transformMergeRequest(mr: GitLabMergeRequestResponse, userRole: UserRole): MergeRequest {
