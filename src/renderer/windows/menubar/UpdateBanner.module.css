@@ -4,18 +4,9 @@
   gap: 8px;
   width: 100%;
   padding: 8px 14px;
-  border: none;
   background: var(--gradient-purple);
   color: #fff;
   font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  text-align: left;
-  transition: filter 0.2s ease;
-}
-
-.updateBanner:hover {
-  filter: brightness(1.08);
 }
 
 .updateIcon {
@@ -25,10 +16,40 @@
   flex-shrink: 0;
 }
 
-.updateText {
+.updateInfo {
   flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.updateArrow {
-  opacity: 0.85;
+.updateInfo:hover {
+  text-decoration: underline;
+}
+
+.copyButton {
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+}
+
+.copyButton:hover {
+  background: rgba(255, 255, 255, 0.3);
 }

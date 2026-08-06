@@ -1,4 +1,4 @@
-import { ipcMain, shell, app } from 'electron';
+import { ipcMain, shell, app, clipboard } from 'electron';
 import { IPC_CHANNELS } from '../../shared/constants/ipcChannels';
 import { accounts } from '../store/accounts';
 import { config } from '../store/config';
@@ -391,5 +391,9 @@ export function setupIpcHandlers(): void {
 
   ipcMain.handle(IPC_CHANNELS.APP_GET_AVAILABLE_UPDATE, () => {
     return getAvailableUpdate();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.APP_COPY_TO_CLIPBOARD, (_, text: string) => {
+    clipboard.writeText(text);
   });
 }

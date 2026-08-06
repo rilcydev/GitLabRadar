@@ -29,4 +29,22 @@ describe('UpdateBanner', () => {
     await userEvent.click(banner);
     expect(openExternal).toHaveBeenCalledWith('https://gh/releases/v0.2.4');
   });
+
+  it('copies the Homebrew update command and confirms', async () => {
+    const copyToClipboard = vi.fn(async () => {});
+    renderWithApi(<UpdateBanner />, {
+      overrides: {
+        app: {
+          getAvailableUpdate: async () => ({ version: '0.2.5', url: 'https://gh/releases/v0.2.5' }),
+          copyToClipboard,
+        },
+      },
+    });
+
+    const copyButton = await screen.findByRole('button', { name: /copy update command/i });
+    await userEvent.click(copyButton);
+
+    expect(copyToClipboard).toHaveBeenCalledWith('brew upgrade --cask gitlabradar');
+    expect(await screen.findByText(/copied/i)).toBeInTheDocument();
+  });
 });

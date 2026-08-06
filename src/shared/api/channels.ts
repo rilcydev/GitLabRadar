@@ -40,6 +40,7 @@ export const COMMAND_CHANNELS = {
     hideMenu: 'app:hideMenu',
     sendTestNotification: 'app:sendTestNotification',
     getAvailableUpdate: 'app:getAvailableUpdate',
+    copyToClipboard: 'app:copyToClipboard',
   },
 } as const;
 
