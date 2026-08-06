@@ -4,6 +4,8 @@
 
 A macOS menu bar application for tracking GitLab merge requests, pipelines, and releases at a glance.
 
+Inspired by the original [GitLabBar](https://github.com/yoanbernabeu/GitLabBar) by [Yoan Bernabeu](https://github.com/yoanbernabeu).
+
 ## Features
 
 ### Menu Bar Icon
@@ -261,3 +263,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Author
 
 **Cyril Tournier** - [GitHub](https://github.com/Tourniercy)
+
+## Acknowledgements
+
+GitLabBar is inspired by the original [GitLabBar](https://github.com/yoanbernabeu/GitLabBar) by [Yoan Bernabeu](https://github.com/yoanbernabeu). Thanks for the idea and the groundwork.
