@@ -32,6 +32,11 @@ class PollingService {
   };
   private onDataUpdate: ((data: PollingData) => void) | null = null;
   private isRefreshing = false;
+  // False until the first poll with data has seeded `lastData`. The first poll
+  // has no prior baseline, so diffing against the empty initial `lastData`
+  // would treat every existing MR/approval/pipeline as "new" and fire a
+  // notification storm on launch. We skip the checks that first time.
+  private hasSeededNotifications = false;
 
   start(callback?: (data: PollingData) => void): void {
     if (callback) {
@@ -212,9 +217,15 @@ class PollingService {
         }
       }
 
-      checkNewMRs(this.lastData.mergeRequests, allMergeRequests);
-      checkNewApprovals(this.lastData.mergeRequests, allMergeRequests);
-      checkPipelineStatusChange(this.lastData.pipelines, allPipelines);
+      // Only notify once we have a real baseline from a previous poll --
+      // otherwise the first poll after launch would announce everything that
+      // already exists as if it were new (see hasSeededNotifications above).
+      if (this.hasSeededNotifications) {
+        checkNewMRs(this.lastData.mergeRequests, allMergeRequests);
+        checkNewApprovals(this.lastData.mergeRequests, allMergeRequests);
+        checkPipelineStatusChange(this.lastData.pipelines, allPipelines);
+      }
+      this.hasSeededNotifications = true;
 
       console.log('Pipelines to display:', allPipelines.map(p => ({
         id: p.id,
