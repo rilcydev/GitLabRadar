@@ -1,5 +1,5 @@
 import userEvent from '@testing-library/user-event';
-import { act, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { Component, type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import type { MergeRequest, MergeRequestAuthor } from '@/shared/types';
@@ -104,6 +104,37 @@ async function pushMRs(emit: ReturnType<typeof renderTab>['emit'], mergeRequests
 }
 
 describe('MergeRequestsTab', () => {
+  it('filters the member picker by name/username search', async () => {
+    const members = [
+      { id: 1, username: 'alice', name: 'Alice Martin', avatar_url: '' },
+      { id: 2, username: 'bob', name: 'Bob Dupont', avatar_url: '' },
+    ];
+    const { emit } = renderTab({ overrides: { gitlab: { getProjectMembers: async () => members } } });
+    await pushMRs(emit, [makeMR({ userRole: 'author', assignees: [] })]);
+
+    await userEvent.click(await screen.findByRole('button', { name: /assign/i }));
+
+    expect(await screen.findByText('Alice Martin')).toBeInTheDocument();
+    expect(screen.getByText('Bob Dupont')).toBeInTheDocument();
+
+    await userEvent.type(screen.getByPlaceholderText('Search members...'), 'ali');
+    expect(screen.getByText('Alice Martin')).toBeInTheDocument();
+    expect(screen.queryByText('Bob Dupont')).not.toBeInTheDocument();
+  });
+
+  it('falls back to an initial when a member avatar image fails to load', async () => {
+    const members = [{ id: 1, username: 'alice', name: 'Alice', avatar_url: 'https://x/broken.png' }];
+    const { emit } = renderTab({ overrides: { gitlab: { getProjectMembers: async () => members } } });
+    await pushMRs(emit, [makeMR({ userRole: 'author', assignees: [] })]);
+
+    await userEvent.click(await screen.findByRole('button', { name: /assign/i }));
+
+    const img = await screen.findByAltText('Alice');
+    fireEvent.error(img);
+    expect(screen.queryByAltText('Alice')).not.toBeInTheDocument();
+    expect(screen.getByText('A')).toBeInTheDocument();
+  });
+
   // index.html:2235,2238-2239,2455,2530 -- ported markup keeps its source ids.
   it('keeps the source ids on the loading, empty and list containers', async () => {
     const { container, emit } = renderTab({ overrides: { accounts: { getAll: async () => [] } } });

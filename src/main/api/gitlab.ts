@@ -637,6 +637,9 @@ export class GitLabClient {
       const response = await this.client.get<GitLabProject[]>('/projects', {
         params: {
           search: query,
+          // Match the group/subgroup path too, not just the repo name, so
+          // searching a folder (e.g. "backend") finds projects inside it.
+          search_namespaces: true,
           membership: true,
           per_page: 50,
           order_by: 'last_activity_at',

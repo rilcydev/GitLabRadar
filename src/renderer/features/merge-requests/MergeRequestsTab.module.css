@@ -383,3 +383,20 @@
   color: var(--text-tertiary);
   font-size: 11px;
 }
+
+.mrDropdownSearch {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 10px;
+  margin-bottom: 4px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 12px;
+  outline: none;
+}
+
+.mrDropdownSearch:focus {
+  border-color: var(--accent-purple);
+}

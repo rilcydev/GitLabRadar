@@ -159,6 +159,38 @@ function escapeForNoteBody(text: string): string {
   return div.innerHTML;
 }
 
+// The 22px avatar in the member picker. Mirrors the shared Avatar's onError
+// fallback so a broken/401 GitLab avatar URL falls back to the initial-letter
+// placeholder instead of the browser's broken-image glyph.
+function MemberAvatar({ member }: { member: ProjectMember }) {
+  const [errored, setErrored] = useState(false);
+  useEffect(() => setErrored(false), [member.avatar_url]);
+
+  if (member.avatar_url && !errored) {
+    return <img src={member.avatar_url} alt={member.name} onError={() => setErrored(true)} />;
+  }
+  // index.html:2601 -- dedicated inline-styled placeholder, not a CSS class.
+  return (
+    <div
+      style={{
+        width: 22,
+        height: 22,
+        borderRadius: '50%',
+        background: 'var(--gradient-blue)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 10,
+        fontWeight: 600,
+        color: 'white',
+        flexShrink: 0,
+      }}
+    >
+      {(member.name || '?').charAt(0).toUpperCase()}
+    </div>
+  );
+}
+
 /**
  * index.html:2568-2663 -- the assign/reviewer member-picker dropdown.
  * Portalled to `document.body` for the same reason as `NotesPanel`.
@@ -170,6 +202,12 @@ function MemberDropdown({
   state: DropdownState;
   onSelect: (userId: 'me' | number) => void;
 }) {
+  const [query, setQuery] = useState('');
+  const q = query.trim().toLowerCase();
+  const filtered = q
+    ? state.members.filter((m) => m.name.toLowerCase().includes(q) || m.username.toLowerCase().includes(q))
+    : state.members;
+
   return createPortal(
     <div
       className={styles.mrDropdown}
@@ -186,27 +224,39 @@ function MemberDropdown({
       {state.status === 'updating' && <div className={styles.mrDropdownLoading}>Updating...</div>}
       {state.status === 'loaded' && (
         <>
-          {/* index.html:2589-2596 -- "Me" always comes first. */}
-          <button
-            className={`${styles.mrDropdownItem} ${styles.meItem}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              onSelect('me');
-            }}
-          >
-            <svg
-              viewBox="0 0 24 24"
-              style={{ width: 22, height: 22, fill: 'var(--accent-purple)', flexShrink: 0 }}
+          <input
+            className={styles.mrDropdownSearch}
+            type="text"
+            placeholder="Search members..."
+            value={query}
+            autoFocus
+            onChange={(e) => setQuery(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+          />
+          {/* index.html:2589-2596 -- "Me" comes first; hidden while actively
+              searching so the results stay focused on real members. */}
+          {!q && (
+            <button
+              className={`${styles.mrDropdownItem} ${styles.meItem}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                onSelect('me');
+              }}
             >
-              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-            </svg>
-            <div className={styles.memberInfo}>
-              <span className={styles.memberName}>Me</span>
-              <span className={styles.memberUsername}>Assign to myself</span>
-            </div>
-          </button>
-          {state.members.map((member) => (
+              <svg
+                viewBox="0 0 24 24"
+                style={{ width: 22, height: 22, fill: 'var(--accent-purple)', flexShrink: 0 }}
+              >
+                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+              </svg>
+              <div className={styles.memberInfo}>
+                <span className={styles.memberName}>Me</span>
+                <span className={styles.memberUsername}>Assign to myself</span>
+              </div>
+            </button>
+          )}
+          {filtered.map((member) => (
             <button
               className={styles.mrDropdownItem}
               key={member.id}
@@ -216,38 +266,14 @@ function MemberDropdown({
                 onSelect(member.id);
               }}
             >
-              {member.avatar_url ? (
-                <img src={member.avatar_url} alt={member.name} />
-              ) : (
-                // index.html:2601 -- dedicated inline-styled placeholder,
-                // not a CSS class in the source; reproduced the same way
-                // rather than promoted into the module's stylesheet. Bug-lot
-                // fix (#8): the initial is guarded with '?' so an empty member
-                // name no longer throws.
-                <div
-                  style={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: '50%',
-                    background: 'var(--gradient-blue)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: 10,
-                    fontWeight: 600,
-                    color: 'white',
-                    flexShrink: 0,
-                  }}
-                >
-                  {(member.name || '?').charAt(0).toUpperCase()}
-                </div>
-              )}
+              <MemberAvatar member={member} />
               <div className={styles.memberInfo}>
                 <span className={styles.memberName}>{member.name}</span>
                 <span className={styles.memberUsername}>@{member.username}</span>
               </div>
             </button>
           ))}
+          {filtered.length === 0 && <div className={styles.mrDropdownLoading}>No members match</div>}
         </>
       )}
     </div>,
