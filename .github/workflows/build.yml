@@ -82,3 +82,73 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  bump-cask:
+    needs: release
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Check for tap token
+        id: guard
+        run: |
+          if [ -z "${{ secrets.HOMEBREW_TAP_TOKEN }}" ]; then
+            echo "HOMEBREW_TAP_TOKEN is not set -- skipping Homebrew cask bump."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download ZIP artifact
+        if: steps.guard.outputs.skip != 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: GitLabBar-zip
+          path: ./artifacts
+
+      - name: Compute version and sha256
+        if: steps.guard.outputs.skip != 'true'
+        id: meta
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          ZIP=$(find ./artifacts -name '*arm64*.zip' | head -n1)
+          if [ -z "$ZIP" ]; then
+            echo "No arm64 zip found in artifacts:" >&2
+            find ./artifacts -type f >&2
+            exit 1
+          fi
+          SHA=$(sha256sum "$ZIP" | awk '{print $1}')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Bumping cask to $VERSION ($SHA) from $ZIP"
+
+      - name: Checkout tap
+        if: steps.guard.outputs.skip != 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: Tourniercy/homebrew-gitlabbar
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: tap
+
+      - name: Update cask
+        if: steps.guard.outputs.skip != 'true'
+        run: |
+          CASK=tap/Casks/gitlabbar.rb
+          sed -i -E "s|^  version \".*\"|  version \"${{ steps.meta.outputs.version }}\"|" "$CASK"
+          sed -i -E "s|^  sha256 \".*\"|  sha256 \"${{ steps.meta.outputs.sha256 }}\"|" "$CASK"
+          echo "=== updated cask ==="
+          head -6 "$CASK"
+
+      - name: Commit and push
+        if: steps.guard.outputs.skip != 'true'
+        run: |
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet; then
+            echo "Cask already up to date; nothing to commit."
+            exit 0
+          fi
+          git add Casks/gitlabbar.rb
+          git commit -m "chore: bump gitlabbar to ${{ steps.meta.outputs.version }}"
+          git push
