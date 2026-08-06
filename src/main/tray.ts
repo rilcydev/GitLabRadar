@@ -181,6 +181,17 @@ class TrayManager {
       },
     });
 
+    // Keep the popup from vanishing when the user switches macOS Spaces
+    // (desktops). The window hides on `blur` (below), and a Space switch fires
+    // `blur`. Making the window a member of all Spaces means switching desktop
+    // brings it along instead of blurring it shut. `skipTransformProcessType`
+    // avoids a dock-icon flicker: this is already a UIElement (LSUIElement)
+    // app, so no accessory<->foreground process transform is needed.
+    this.menuWindow.setVisibleOnAllWorkspaces(true, {
+      visibleOnFullScreen: true,
+      skipTransformProcessType: true,
+    });
+
     // Save window size when resized
     this.menuWindow.on('resize', () => {
       if (this.menuWindow && !this.menuWindow.isDestroyed()) {
