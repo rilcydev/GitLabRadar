@@ -139,6 +139,13 @@ export function GeneralPage() {
     [api, notifications]
   );
 
+  // Diagnostic: fires a notification on demand so the user can confirm macOS
+  // actually delivers them for this (ad-hoc signed) build. Not tied to any
+  // config toggle -- see sendTestNotification in the notifications service.
+  const handleSendTestNotification = useCallback(async () => {
+    await api.app.sendTestNotification();
+  }, [api]);
+
   return (
     <div className={styles.page}>
       <h1 className={styles.pageTitle}>Settings</h1>
@@ -292,6 +299,20 @@ export function GeneralPage() {
             />
             <span className={styles.toggleSlider} />
           </label>
+        </div>
+
+        <div className={styles.toggleRow}>
+          <div className={styles.toggleInfo}>
+            <div className={styles.toggleLabel}>Test notifications</div>
+            <div className={styles.toggleDesc}>Send a sample notification to check that macOS delivers them</div>
+          </div>
+          <button
+            type="button"
+            className={styles.testNotifButton}
+            onClick={() => void handleSendTestNotification()}
+          >
+            Send a test notification
+          </button>
         </div>
       </div>
     </div>

@@ -206,3 +206,25 @@
 .toggle input:checked + .toggleSlider:before {
   transform: translateX(20px);
 }
+
+/* "Send a test notification" diagnostic button (Notifications section). */
+.testNotifButton {
+  padding: 8px 16px;
+  background: var(--gradient-purple);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.testNotifButton:hover {
+  box-shadow: 0 0 16px var(--accent-purple-glow);
+}
+
+.testNotifButton:active {
+  transform: translateY(1px);
+}

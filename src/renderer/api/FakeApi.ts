@@ -139,6 +139,7 @@ export function createFakeApi(overrides: FakeApiOverrides = {}): {
     showPreferences: async () => {},
     quit: async () => {},
     hideMenu: async () => {},
+    sendTestNotification: async () => {},
     ...overrides.app,
   };
 

@@ -1,6 +1,6 @@
 import userEvent from '@testing-library/user-event';
 import { screen, waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { renderWithApi } from '../../../../test/renderWithApi';
 import { GeneralPage } from './GeneralPage';
 
@@ -247,6 +247,16 @@ describe('GeneralPage', () => {
     await waitFor(async () => {
       expect((await api.config.get('notifications')).mrApproved).toBe(true);
     });
+  });
+
+  it('fires a test notification when the "Send a test notification" button is clicked', async () => {
+    const sendTestNotification = vi.fn(async () => {});
+    renderWithApi(<GeneralPage />, { overrides: { app: { sendTestNotification } } });
+
+    const button = await screen.findByRole('button', { name: /send a test notification/i });
+    await userEvent.click(button);
+
+    expect(sendTestNotification).toHaveBeenCalledTimes(1);
   });
 });
 

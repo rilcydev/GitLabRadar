@@ -40,6 +40,24 @@ function showNotification(notification: Notification, kind: string): void {
   notification.show();
 }
 
+/**
+ * Fires a one-off notification on demand, triggered by the "Send a test
+ * notification" button in Preferences. Deliberately not gated by any config
+ * toggle: its whole purpose is to let the user check that macOS actually
+ * delivers notifications for this (ad-hoc signed) build. If macOS refuses,
+ * `showNotification`'s `failed` handler logs the reason.
+ */
+export function sendTestNotification(): void {
+  showNotification(
+    new Notification({
+      title: 'GitLabRadar',
+      body: 'This is a test notification.',
+      silent: false,
+    }),
+    'test'
+  );
+}
+
 export function notifyNewMRAssigned(mr: MergeRequest): void {
   const notifConfig = getNotificationConfig();
   if (!notifConfig.enabled || !notifConfig.newMRAssigned) return;

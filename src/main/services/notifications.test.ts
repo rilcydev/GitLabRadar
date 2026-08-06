@@ -34,7 +34,7 @@ vi.mock('../store/config', () => ({
   config: { get: (k: string) => (k === 'notifications' ? h.notif.value : undefined) },
 }));
 
-import { checkNewApprovals, resetNotificationCache } from './notifications';
+import { checkNewApprovals, resetNotificationCache, sendTestNotification } from './notifications';
 import type { MergeRequest, MergeRequestAuthor } from '../../shared/types';
 
 const u = (id: number, name: string): MergeRequestAuthor => ({
@@ -113,5 +113,18 @@ describe('checkNewApprovals', () => {
     h.notif.value.mrApproved = false;
     checkNewApprovals([mr({ approvedBy: [] })], [mr({ approvedBy: [u(1, 'Alice')] })]);
     expect(h.shown).toEqual([]);
+  });
+});
+
+describe('sendTestNotification', () => {
+  it('shows a test notification immediately', () => {
+    sendTestNotification();
+    expect(h.shown).toEqual([{ title: 'GitLabRadar', body: 'This is a test notification.' }]);
+  });
+
+  it('fires even when notifications are disabled in config (it is a diagnostic)', () => {
+    h.notif.value.enabled = false;
+    sendTestNotification();
+    expect(h.shown).toHaveLength(1);
   });
 });

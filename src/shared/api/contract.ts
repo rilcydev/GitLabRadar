@@ -159,6 +159,7 @@ export interface GitLabRadarApi {
     showPreferences(): Promise<void>;
     quit(): Promise<void>;
     hideMenu(): Promise<void>;
+    sendTestNotification(): Promise<void>;
   };
   on: {
     dataUpdated(cb: (data: PolledData) => void): Unsubscribe;
