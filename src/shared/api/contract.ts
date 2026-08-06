@@ -6,6 +6,7 @@ import type {
   Pipeline,
   Release,
   UntagProject,
+  UpdateInfo,
 } from '../types';
 import { COMMAND_CHANNELS } from './channels';
 
@@ -160,6 +161,7 @@ export interface GitLabRadarApi {
     quit(): Promise<void>;
     hideMenu(): Promise<void>;
     sendTestNotification(): Promise<void>;
+    getAvailableUpdate(): Promise<UpdateInfo | null>;
   };
   on: {
     dataUpdated(cb: (data: PolledData) => void): Unsubscribe;

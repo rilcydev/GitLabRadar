@@ -4,3 +4,4 @@ export * from './pipeline';
 export * from './config';
 export * from './release';
 export * from './untag';
+export * from './update';

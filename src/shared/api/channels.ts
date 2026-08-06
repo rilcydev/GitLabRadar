@@ -39,6 +39,7 @@ export const COMMAND_CHANNELS = {
     quit: 'app:quit',
     hideMenu: 'app:hideMenu',
     sendTestNotification: 'app:sendTestNotification',
+    getAvailableUpdate: 'app:getAvailableUpdate',
   },
 } as const;
 

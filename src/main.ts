@@ -8,6 +8,7 @@ import { pollingService } from './main/services/polling';
 import { untagPollingService } from './main/services/untagPolling';
 import { setupIpcHandlers } from './main/ipc/handlers';
 import { setupAutoLaunch } from './main/services/autolaunch';
+import { startUpdateChecks } from './main/services/updateChecker';
 
 // S'assurer qu'une seule instance de l'app tourne
 const gotTheLock = app.requestSingleInstanceLock();
@@ -28,6 +29,7 @@ if (!gotTheLock) {
     setupIpcHandlers();
     trayManager.initialize();
     setupAutoLaunch();
+    startUpdateChecks();
 
     pollingService.start((data) => {
       trayManager.updateFromData(data);

@@ -10,6 +10,7 @@ import { ReleasesTab } from '../../features/releases/ReleasesTab';
 import { UntagTab } from '../../features/untag/UntagTab';
 import { useData, useMRDismissal, usePipelineDismissal, useReleaseDismissal } from './DataProvider';
 import styles from './MenubarApp.module.css';
+import { UpdateBanner } from './UpdateBanner';
 
 export type ViewMode = 'developer' | 'productOwner';
 
@@ -190,6 +191,7 @@ export function MenubarApp() {
 
   return (
     <div className={styles.app}>
+      <UpdateBanner />
       <div className={styles.header}>
         <div className={styles.logo}>
           <svg viewBox="0 0 24 24">

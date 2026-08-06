@@ -6,8 +6,8 @@ const flatten = (o: Record<string, Record<string, string>>) =>
   Object.values(o).flatMap((ns) => Object.values(ns));
 
 describe('channel manifest', () => {
-  it('declares 33 commands', () => {
-    expect(flatten(COMMAND_CHANNELS)).toHaveLength(33);
+  it('declares 34 commands', () => {
+    expect(flatten(COMMAND_CHANNELS)).toHaveLength(34);
   });
 
   it('declares 4 events', () => {

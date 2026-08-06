@@ -8,6 +8,7 @@ import { trayManager } from '../tray';
 import { GitLabClient, getGitLabClient } from '../api/gitlab';
 import { setAutoLaunch } from '../services/autolaunch';
 import { sendTestNotification } from '../services/notifications';
+import { getAvailableUpdate } from '../services/updateChecker';
 import { GitLabAccount, GitLabAccountInput, AppConfig } from '../../shared/types';
 
 async function resolveUserIds(client: GitLabClient, ids: number[]): Promise<number[]> {
@@ -386,5 +387,9 @@ export function setupIpcHandlers(): void {
 
   ipcMain.handle(IPC_CHANNELS.APP_SEND_TEST_NOTIFICATION, () => {
     sendTestNotification();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.APP_GET_AVAILABLE_UPDATE, () => {
+    return getAvailableUpdate();
   });
 }
