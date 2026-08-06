@@ -1,7 +1,7 @@
 {
   "name": "gitlabradar",
   "productName": "GitLabRadar",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "A macOS menu bar app for GitLab - Track merge requests, pipelines, and releases at a glance",
   "main": ".vite/build/main.js",
   "packageManager": "pnpm@11.18.0",
