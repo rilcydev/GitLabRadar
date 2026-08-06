@@ -25,6 +25,16 @@ const config: ForgeConfig = {
       identity: '-',
       identityValidation: false,
       preAutoEntitlements: false,
+      // Ad-hoc signing (no Developer ID) + Hardened Runtime turns on macOS
+      // Library Validation, which refuses to load the Electron Framework
+      // (different signing identity `com.github.Electron.framework`, no shared
+      // Team ID) and aborts the app at launch with dyld's "different Team IDs"
+      // error -- so the packaged app never opens on any Mac. We can't notarize
+      // without a paid Developer ID anyway, so Hardened Runtime buys nothing
+      // here. Disable it so the ad-hoc bundle actually launches. Verified: the
+      // signature flags drop from 0x10002(adhoc,runtime) to 0x2(adhoc) and the
+      // app starts (tray initializes).
+      optionsForFile: () => ({ hardenedRuntime: false }),
     },
     extendInfo: {
       LSUIElement: true, // Hide from Dock (menu bar app)
