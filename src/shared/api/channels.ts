@@ -41,6 +41,7 @@ export const COMMAND_CHANNELS = {
     sendTestNotification: 'app:sendTestNotification',
     getAvailableUpdate: 'app:getAvailableUpdate',
     copyToClipboard: 'app:copyToClipboard',
+    getVersion: 'app:getVersion',
   },
 } as const;
 

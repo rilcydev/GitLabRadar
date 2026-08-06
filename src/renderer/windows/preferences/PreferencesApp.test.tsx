@@ -29,4 +29,9 @@ describe('PreferencesApp', () => {
     expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument();
     expect(await screen.findByText('Launch at startup')).toBeInTheDocument();
   });
+
+  it('shows the app version in the sidebar', async () => {
+    renderWithApi(<PreferencesApp />, { overrides: { app: { getVersion: async () => '1.4.2' } } });
+    expect(await screen.findByText('v1.4.2')).toBeInTheDocument();
+  });
 });

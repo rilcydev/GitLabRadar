@@ -188,3 +188,11 @@
   margin-bottom: 32px;
   line-height: 1.5;
 }
+
+/* Pinned to the bottom of the (flex-column) sidebar. */
+.sidebarVersion {
+  margin-top: auto;
+  padding-top: 16px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}

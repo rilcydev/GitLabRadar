@@ -163,6 +163,7 @@ export interface GitLabRadarApi {
     sendTestNotification(): Promise<void>;
     getAvailableUpdate(): Promise<UpdateInfo | null>;
     copyToClipboard(text: string): Promise<void>;
+    getVersion(): Promise<string>;
   };
   on: {
     dataUpdated(cb: (data: PolledData) => void): Unsubscribe;

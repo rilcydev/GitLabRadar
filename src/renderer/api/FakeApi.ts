@@ -142,6 +142,7 @@ export function createFakeApi(overrides: FakeApiOverrides = {}): {
     sendTestNotification: async () => {},
     getAvailableUpdate: async () => null,
     copyToClipboard: async () => {},
+    getVersion: async () => '0.0.0',
     ...overrides.app,
   };
 

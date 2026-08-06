@@ -43,6 +43,7 @@ export const IPC_CHANNELS = {
   APP_SEND_TEST_NOTIFICATION: 'app:sendTestNotification',
   APP_GET_AVAILABLE_UPDATE: 'app:getAvailableUpdate',
   APP_COPY_TO_CLIPBOARD: 'app:copyToClipboard',
+  APP_GET_VERSION: 'app:getVersion',
 
   // Events (main → renderer)
   DATA_UPDATED: 'data:updated',

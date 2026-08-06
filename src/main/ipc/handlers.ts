@@ -396,4 +396,8 @@ export function setupIpcHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.APP_COPY_TO_CLIPBOARD, (_, text: string) => {
     clipboard.writeText(text);
   });
+
+  ipcMain.handle(IPC_CHANNELS.APP_GET_VERSION, () => {
+    return app.getVersion();
+  });
 }

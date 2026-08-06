@@ -1,7 +1,10 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { AccountsPage } from '../../features/preferences/AccountsPage/AccountsPage';
 import { GeneralPage } from '../../features/preferences/GeneralPage/GeneralPage';
 import { ProjectsPage } from '../../features/preferences/ProjectsPage/ProjectsPage';
+// Relative import: eslint's import/no-unresolved has no TS-aware resolver for
+// the `@/*` alias on value imports (same gap as the rest of the renderer).
+import { useApi } from '../../api/ApiContext';
 import styles from './PreferencesApp.module.css';
 
 type Page = 'accounts' | 'projects' | 'general';
@@ -44,7 +47,20 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 export function PreferencesApp() {
+  const api = useApi();
   const [page, setPage] = useState<Page>('accounts');
+  const [version, setVersion] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      const v = await api.app.getVersion();
+      if (active) setVersion(v);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [api]);
 
   return (
     <div className={styles.app}>
@@ -73,6 +89,8 @@ export function PreferencesApp() {
             </div>
           ))}
         </nav>
+
+        {version && <div className={styles.sidebarVersion}>v{version}</div>}
       </div>
 
       <div className={styles.main}>
