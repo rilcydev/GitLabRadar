@@ -7,7 +7,7 @@ import '../../styles/tokens.css';
 const container = document.getElementById('root');
 if (!container) throw new Error('#root not found');
 
-// window.gitlabbar is exposed by the preload's contextBridge and should
+// window.gitlabradar is exposed by the preload's contextBridge and should
 // always be present -- see src/preload.ts and src/global.d.ts. The
 // `window.require('electron')` fallback below is not a supported path; it
 // exists only so a misconfigured preload fails loudly (a thrown
@@ -16,7 +16,7 @@ if (!container) throw new Error('#root not found');
 type ElectronRequire = (id: 'electron') => { ipcRenderer: IpcLike };
 
 const api =
-  window.gitlabbar ??
+  window.gitlabradar ??
   createElectronApi((window as unknown as { require: ElectronRequire }).require('electron').ipcRenderer);
 
 createRoot(container).render(

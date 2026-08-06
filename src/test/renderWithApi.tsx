@@ -1,6 +1,6 @@
 import { render, type RenderOptions } from '@testing-library/react';
 import type { ReactElement } from 'react';
-import type { GitLabBarApi } from '@/shared/api/contract';
+import type { GitLabRadarApi } from '@/shared/api/contract';
 // Value imports: eslint's import/no-unresolved can't follow the `@/*` alias
 // for runtime imports (no TS-aware resolver configured -- see
 // src/test/harness.test.ts and src/renderer/api/FakeApi.ts for the same
@@ -16,7 +16,7 @@ export type RenderWithApiOptions = RenderOptions & {
   // Escape hatch: caller supplies both halves of an already-built fake
   // together, so `api` and its matching `emit` can never come apart -- there
   // is no door here to receive an `api` without the event bus that backs it.
-  fake?: { api: GitLabBarApi; emit: FakeEmitter };
+  fake?: { api: GitLabRadarApi; emit: FakeEmitter };
 };
 
 // Renders `ui` wrapped in a fresh `ApiProvider` and always returns a real,

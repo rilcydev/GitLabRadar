@@ -119,7 +119,7 @@ export interface UntagPollingResult {
   lastUpdated: Date;
 }
 
-export interface GitLabBarApi {
+export interface GitLabRadarApi {
   accounts: {
     getAll(): Promise<GitLabAccount[]>;
     add(input: GitLabAccountInput): Promise<AccountMutationResult>;
@@ -174,14 +174,14 @@ type Exact<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
 type AssertExact<T extends true> = T;
 
 export type _AccountsMatch = AssertExact<
-  Exact<keyof typeof COMMAND_CHANNELS.accounts, keyof GitLabBarApi['accounts']>
+  Exact<keyof typeof COMMAND_CHANNELS.accounts, keyof GitLabRadarApi['accounts']>
 >;
 export type _GitlabMatch = AssertExact<
-  Exact<keyof typeof COMMAND_CHANNELS.gitlab, keyof GitLabBarApi['gitlab']>
+  Exact<keyof typeof COMMAND_CHANNELS.gitlab, keyof GitLabRadarApi['gitlab']>
 >;
 export type _ConfigMatch = AssertExact<
-  Exact<keyof typeof COMMAND_CHANNELS.config, keyof GitLabBarApi['config']>
+  Exact<keyof typeof COMMAND_CHANNELS.config, keyof GitLabRadarApi['config']>
 >;
 export type _AppMatch = AssertExact<
-  Exact<keyof typeof COMMAND_CHANNELS.app, keyof GitLabBarApi['app']>
+  Exact<keyof typeof COMMAND_CHANNELS.app, keyof GitLabRadarApi['app']>
 >;

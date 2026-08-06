@@ -1,4 +1,4 @@
-# GitLabBar
+# GitLabRadar
 
 > **Note**: This is an experimental project for personal use. If it helps someone else, great! No guarantees are provided regarding stability or maintenance. The application may change at any time without backward compatibility.
 
@@ -10,7 +10,7 @@ Inspired by the original [GitLabBar](https://github.com/yoanbernabeu/GitLabBar) 
 
 ### Menu Bar Icon
 
-GitLabBar lives in your macOS menu bar with a color-coded icon that reflects your current status:
+GitLabRadar lives in your macOS menu bar with a color-coded icon that reflects your current status:
 
 | Icon Color | Meaning |
 |------------|---------|
@@ -127,7 +127,7 @@ All notification types can be individually enabled/disabled.
 - **View mode**: Switch between Developer (classic 3-tab view) and Product Owner (release-focused view)
 - **Refresh interval**: 30 seconds to 10 minutes
 - **Failed pipeline age limit**: Only show failures from the last X hours
-- **Launch at startup**: Start GitLabBar when you log in
+- **Launch at startup**: Start GitLabRadar when you log in
 - **Dark mode**: Automatically adapts to your macOS appearance
 
 ## Installation
@@ -137,36 +137,36 @@ All notification types can be individually enabled/disabled.
 **Install or upgrade with a single command:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Tourniercy/GitLabBar/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Tourniercy/GitLabRadar/main/install.sh | bash
 ```
 
-The script automatically detects if GitLabBar is already installed and handles the upgrade (stop, replace, relaunch).
+The script automatically detects if GitLabRadar is already installed and handles the upgrade (stop, replace, relaunch).
 
 > Your configuration (accounts, watched projects, settings) is preserved across upgrades.
 
 ### From Releases (manual)
 
-1. Download the latest `.dmg` file from the [Releases](https://github.com/Tourniercy/GitLabBar/releases) page
+1. Download the latest `.dmg` file from the [Releases](https://github.com/Tourniercy/GitLabRadar/releases) page
 2. Open the `.dmg` file
-3. Drag **GitLabBar** to your Applications folder
-4. Launch GitLabBar from Applications
+3. Drag **GitLabRadar** to your Applications folder
+4. Launch GitLabRadar from Applications
 
 ### Bypassing macOS Gatekeeper
 
-Since GitLabBar is not signed with an Apple Developer certificate, macOS will block the app on first launch. The one-liner commands above handle this automatically via `xattr -cr`. If you installed manually, here's how to allow it:
+Since GitLabRadar is not signed with an Apple Developer certificate, macOS will block the app on first launch. The one-liner commands above handle this automatically via `xattr -cr`. If you installed manually, here's how to allow it:
 
 #### Method 1: Right-click to Open (Simplest)
 
-1. Right-click (or Control-click) on GitLabBar in your Applications folder
+1. Right-click (or Control-click) on GitLabRadar in your Applications folder
 2. Select **Open** from the context menu
 3. Click **Open** in the dialog that appears
-4. GitLabBar will now be allowed to run
+4. GitLabRadar will now be allowed to run
 
 #### Method 2: System Preferences
 
-1. Try to open GitLabBar normally (it will be blocked)
+1. Try to open GitLabRadar normally (it will be blocked)
 2. Go to **System Preferences** → **Security & Privacy** → **General**
-3. You'll see a message about GitLabBar being blocked
+3. You'll see a message about GitLabRadar being blocked
 4. Click **Open Anyway**
 5. Click **Open** in the confirmation dialog
 
@@ -175,10 +175,10 @@ Since GitLabBar is not signed with an Apple Developer certificate, macOS will bl
 Remove the quarantine attribute from the app:
 
 ```bash
-xattr -cr /Applications/GitLabBar.app
+xattr -cr /Applications/GitLabRadar.app
 ```
 
-Then open GitLabBar normally.
+Then open GitLabRadar normally.
 
 ## Building from Source
 
@@ -193,8 +193,8 @@ Then open GitLabBar normally.
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/Tourniercy/GitLabBar.git
-cd GitLabBar
+git clone https://github.com/Tourniercy/GitLabRadar.git
+cd GitLabRadar
 ```
 
 2. Install dependencies:
@@ -221,7 +221,7 @@ The built application will be available in the `out/make` directory.
 
 ### Adding a GitLab Account
 
-1. Click the GitLabBar icon in your menu bar
+1. Click the GitLabRadar icon in your menu bar
 2. Click **Preferences** at the bottom of the popup
 3. Go to the **Accounts** tab
 4. Click **Add account**
@@ -236,7 +236,7 @@ The built application will be available in the `out/make` directory.
 2. Create a new token with the following scopes:
    - `read_api` - Read access to the API
    - `read_user` - Read access to your user profile
-3. Copy the token and paste it in GitLabBar
+3. Copy the token and paste it in GitLabRadar
 
 ### Setting Up Watched Projects
 

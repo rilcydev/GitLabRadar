@@ -1,9 +1,9 @@
 #!/bin/bash
 set -e
 
-APP_NAME='GitLabBar'
+APP_NAME='GitLabRadar'
 APP_PATH="/Applications/${APP_NAME}.app"
-REPO='Tourniercy/GitLabBar'
+REPO='Tourniercy/GitLabRadar'
 TMP_ZIP="/tmp/${APP_NAME}.zip"
 
 echo "==> Fetching latest release..."

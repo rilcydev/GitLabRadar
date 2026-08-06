@@ -101,7 +101,7 @@ export function simpleMarkdown(text: string): string {
   //    ctrl/cmd-click, and the browser's own context-menu "Open Link" all
   //    bypass it and can navigate the raw href directly. A javascript:
   //    (or data:, vbscript:, ...) href reached that way runs arbitrary JS
-  //    in the renderer with window.gitlabbar in scope. So any URL whose
+  //    in the renderer with window.gitlabradar in scope. So any URL whose
   //    scheme isn't in the allow-list is rejected: rendered as the plain
   //    (already-escaped) label text with no <a> at all, rather than a
   //    link with a neutered href — that guarantees no route (click,
@@ -135,7 +135,7 @@ export function simpleMarkdown(text: string): string {
       .replace(/"/g, '&quot;');
     return (
       `<a href="${hrefUrl}" style="color:var(--accent-purple);text-decoration:none;" ` +
-      `onclick="event.stopPropagation();window.gitlabbar.app.openExternal('${jsUrl}');return false;">` +
+      `onclick="event.stopPropagation();window.gitlabradar.app.openExternal('${jsUrl}');return false;">` +
       `${label}</a>`
     );
   });

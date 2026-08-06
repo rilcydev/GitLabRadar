@@ -23,7 +23,7 @@ function renderMenubar(overrides?: Parameters<typeof renderWithApi>[1]) {
 describe('MenubarApp', () => {
   it('renders the header title verbatim', async () => {
     renderMenubar();
-    expect(screen.getByText('GitLabBar')).toBeInTheDocument();
+    expect(screen.getByText('GitLabRadar')).toBeInTheDocument();
     // See the note in 'opens on the MRs tab' below.
     await screen.findByTestId('mr-count');
   });
@@ -269,7 +269,7 @@ describe('MenubarApp', () => {
       overrides: { config: { get: async () => 'productOwner' as never } },
     });
 
-    await screen.findByText('GitLabBar');
+    await screen.findByText('GitLabRadar');
     const poContent = container.querySelector('#po-content');
     expect(poContent).not.toBeNull();
     expect(poContent).toHaveClass(styles.tabContentActive);
@@ -286,7 +286,7 @@ describe('MenubarApp', () => {
   describe('profile nav (Developer / Product Owner toggle)', () => {
     it('hides the profile nav entirely when no account is configured', async () => {
       const { container } = renderMenubar({ overrides: { accounts: { getAll: async () => [] } } });
-      await screen.findByText('GitLabBar');
+      await screen.findByText('GitLabRadar');
       expect(container.querySelector('#profileNav')).toHaveStyle({ display: 'none' });
     });
 
@@ -294,7 +294,7 @@ describe('MenubarApp', () => {
       const { container } = renderMenubar({
         overrides: { accounts: { getAll: async () => [{ id: 'a1' } as never] } },
       });
-      await screen.findByText('GitLabBar');
+      await screen.findByText('GitLabRadar');
       expect(container.querySelector('#profileNav')).toHaveStyle({ display: 'flex' });
       expect(container.querySelector('#profileDeveloper')).toHaveClass(styles.profileNavItemActive);
       expect(container.querySelector('#profileProductOwner')).not.toHaveClass(styles.profileNavItemActive);
@@ -308,7 +308,7 @@ describe('MenubarApp', () => {
           config: { set: configSet },
         },
       });
-      await screen.findByText('GitLabBar');
+      await screen.findByText('GitLabRadar');
 
       await userEvent.click(screen.getByText('Product Owner'));
 
@@ -324,7 +324,7 @@ describe('MenubarApp', () => {
       renderMenubar({
         overrides: { accounts: { getAll: async () => [{ id: 'a1' } as never] }, config: { set: configSet } },
       });
-      await screen.findByText('GitLabBar');
+      await screen.findByText('GitLabRadar');
 
       await userEvent.click(screen.getByText('Developer'));
 
@@ -341,7 +341,7 @@ describe('MenubarApp', () => {
     const { container } = renderMenubar({
       overrides: { accounts: { getAll: async () => [{ id: 'a1' } as never] } },
     });
-    await screen.findByText('GitLabBar');
+    await screen.findByText('GitLabRadar');
 
     const mrsContentBefore = container.querySelector('#mrs-content');
     const pipelinesContentBefore = container.querySelector('#pipelines-content');
@@ -404,7 +404,7 @@ describe('MenubarApp', () => {
     it('calls app.showPreferences() when the Preferences link is clicked', async () => {
       const showPreferences = vi.fn().mockResolvedValue(undefined);
       renderMenubar({ overrides: { app: { showPreferences } } });
-      await screen.findByText('GitLabBar');
+      await screen.findByText('GitLabRadar');
 
       await userEvent.click(screen.getByText('Preferences'));
 

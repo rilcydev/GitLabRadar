@@ -1,5 +1,5 @@
 import type {
-  GitLabBarApi,
+  GitLabRadarApi,
   PolledData,
   RefreshStatus,
   Unsubscribe,
@@ -12,16 +12,16 @@ import type { AppConfig } from '@/shared/types';
 // even though tsc/Vite/Vitest all resolve it fine. Relative path sidesteps it.
 import { DEFAULT_CONFIG } from '../../shared/types/config';
 
-// A deep-partial-by-namespace view of GitLabBarApi: a test overriding
+// A deep-partial-by-namespace view of GitLabRadarApi: a test overriding
 // `accounts.getAll` doesn't have to restate the other 31 methods across the
 // other three command namespaces, nor the 4 event subscriptions. Each
 // namespace's members are functions, not further-nestable objects, so one
 // level of `Partial` per namespace is as "deep" as this contract gets.
 export type FakeApiOverrides = {
-  [K in keyof GitLabBarApi]?: Partial<GitLabBarApi[K]>;
+  [K in keyof GitLabRadarApi]?: Partial<GitLabRadarApi[K]>;
 };
 
-// Mirrors GitLabBarApi['on']'s shape: one emit method per pushed event, so
+// Mirrors GitLabRadarApi['on']'s shape: one emit method per pushed event, so
 // `emit.dataUpdated(data)` etc. drive the same subscribers `api.on.dataUpdated`
 // registered, synchronously and without needing IPC or fake timers.
 export interface FakeEmitter {
@@ -50,7 +50,7 @@ function createEventBus<T>() {
 }
 
 export function createFakeApi(overrides: FakeApiOverrides = {}): {
-  api: GitLabBarApi;
+  api: GitLabRadarApi;
   emit: FakeEmitter;
 } {
   // Mutable copy of DEFAULT_CONFIG -- structuredClone (not a shallow spread)
@@ -64,7 +64,7 @@ export function createFakeApi(overrides: FakeApiOverrides = {}): {
   const errorBus = createEventBus<string>();
   const untagDataUpdatedBus = createEventBus<UntagPollingResult>();
 
-  const accounts: GitLabBarApi['accounts'] = {
+  const accounts: GitLabRadarApi['accounts'] = {
     getAll: async () => [],
     add: async (input) => ({
       success: true,
@@ -95,7 +95,7 @@ export function createFakeApi(overrides: FakeApiOverrides = {}): {
     ...overrides.accounts,
   };
 
-  const gitlab: GitLabBarApi['gitlab'] = {
+  const gitlab: GitLabRadarApi['gitlab'] = {
     getMRs: async () => [],
     getPipelines: async () => [],
     getReleases: async () => [],
@@ -119,7 +119,7 @@ export function createFakeApi(overrides: FakeApiOverrides = {}): {
     ...overrides.gitlab,
   };
 
-  const config: GitLabBarApi['config'] = {
+  const config: GitLabRadarApi['config'] = {
     // structuredClone on the way out, mirroring the clone on the way in:
     // without it, callers get a live reference into configStore and can
     // corrupt it in place (e.g. mutating the returned `notifications`
@@ -134,7 +134,7 @@ export function createFakeApi(overrides: FakeApiOverrides = {}): {
     ...overrides.config,
   };
 
-  const app: GitLabBarApi['app'] = {
+  const app: GitLabRadarApi['app'] = {
     openExternal: async () => {},
     showPreferences: async () => {},
     quit: async () => {},
@@ -142,7 +142,7 @@ export function createFakeApi(overrides: FakeApiOverrides = {}): {
     ...overrides.app,
   };
 
-  const on: GitLabBarApi['on'] = {
+  const on: GitLabRadarApi['on'] = {
     dataUpdated: dataUpdatedBus.on,
     refreshStatus: refreshStatusBus.on,
     error: errorBus.on,
@@ -150,7 +150,7 @@ export function createFakeApi(overrides: FakeApiOverrides = {}): {
     ...overrides.on,
   };
 
-  const api: GitLabBarApi = { accounts, gitlab, config, app, on };
+  const api: GitLabRadarApi = { accounts, gitlab, config, app, on };
 
   const emit: FakeEmitter = {
     dataUpdated: dataUpdatedBus.emit,

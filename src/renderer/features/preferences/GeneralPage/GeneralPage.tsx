@@ -142,7 +142,7 @@ export function GeneralPage() {
   return (
     <div className={styles.page}>
       <h1 className={styles.pageTitle}>Settings</h1>
-      <p className={styles.pageDesc}>Customize GitLabBar&apos;s behavior according to your preferences.</p>
+      <p className={styles.pageDesc}>Customize GitLabRadar&apos;s behavior according to your preferences.</p>
 
       <div className={styles.sectionTitle}>Application</div>
 
@@ -150,7 +150,7 @@ export function GeneralPage() {
         <div className={styles.toggleRow}>
           <div className={styles.toggleInfo}>
             <div className={styles.toggleLabel}>Launch at startup</div>
-            <div className={styles.toggleDesc}>Open GitLabBar automatically when macOS starts</div>
+            <div className={styles.toggleDesc}>Open GitLabRadar automatically when macOS starts</div>
           </div>
           <label className={styles.toggle}>
             <input

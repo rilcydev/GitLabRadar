@@ -1,6 +1,6 @@
 {
-  "name": "gitlabbar",
-  "productName": "GitLabBar",
+  "name": "gitlabradar",
+  "productName": "GitLabRadar",
   "version": "0.1.0",
   "description": "A macOS menu bar app for GitLab - Track merge requests, pipelines, and releases at a glance",
   "main": ".vite/build/main.js",
@@ -38,12 +38,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Tourniercy/GitLabBar.git"
+    "url": "https://github.com/Tourniercy/GitLabRadar.git"
   },
   "bugs": {
-    "url": "https://github.com/Tourniercy/GitLabBar/issues"
+    "url": "https://github.com/Tourniercy/GitLabRadar/issues"
   },
-  "homepage": "https://github.com/Tourniercy/GitLabBar#readme",
+  "homepage": "https://github.com/Tourniercy/GitLabRadar#readme",
   "devDependencies": {
     "@electron-forge/cli": "^7.11.1",
     "@electron-forge/maker-deb": "^7.11.1",

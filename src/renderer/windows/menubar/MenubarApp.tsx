@@ -197,7 +197,7 @@ export function MenubarApp() {
           </svg>
         </div>
         <div className={styles.headerContent}>
-          <div className={styles.headerTitle}>GitLabBar</div>
+          <div className={styles.headerTitle}>GitLabRadar</div>
           <div className={styles.headerSubtitle} id="headerSubtitle">
             {headerSubtitle(mrCount, pipelineCount, releaseCount, untagCount)}
           </div>

@@ -58,7 +58,7 @@ async function generateAppIcns() {
     ['icon_512x512.png', 512], ['icon_512x512@2x.png', 1024],
   ];
 
-  const tmpRoot = mkdtempSync(join(tmpdir(), 'gitlabbar-'));
+  const tmpRoot = mkdtempSync(join(tmpdir(), 'gitlabradar-'));
   const iconset = join(tmpRoot, 'icon.iconset');
   mkdirSync(iconset, { recursive: true });
 

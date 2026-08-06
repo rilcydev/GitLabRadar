@@ -4,7 +4,7 @@
 // Deliberately NOT combined into global.d.ts: TypeScript's wildcard ambient
 // module matching (`declare module '*.foo'`) only works when the declaring
 // file is a plain global script, not an ES module. global.d.ts has a
-// top-level `import type` (for `Window.gitlabbar`), which makes it a
+// top-level `import type` (for `Window.gitlabradar`), which makes it a
 // module and silently breaks wildcard matching -- `import styles from
 // './x.module.css'` then fails to resolve even though this exact block
 // exists elsewhere in the program. Proven empirically: adding a no-op

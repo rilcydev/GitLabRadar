@@ -9,7 +9,7 @@ describe('GeneralPage', () => {
     renderWithApi(<GeneralPage />);
     expect(await screen.findByText('Settings')).toBeInTheDocument();
     expect(
-      screen.getByText("Customize GitLabBar's behavior according to your preferences.")
+      screen.getByText("Customize GitLabRadar's behavior according to your preferences.")
     ).toBeInTheDocument();
   });
 

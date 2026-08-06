@@ -407,7 +407,7 @@ export function MergeRequestsTab() {
   }
 
   // index.html:2542-2553. `dismissMR` (from `useMRDismissal`) itself
-  // mirrors `await window.gitlabbar.gitlab.dismissMR(mrId);
+  // mirrors `await window.gitlabradar.gitlab.dismissMR(mrId);
   // dismissedMRIds.push(mrId);` -- the `renderMRs()` call right after that
   // (index.html:2550) is what the `setDoneActions(new Set())` clear
   // reproduces here (see the doc comment on `doneActions` above for why

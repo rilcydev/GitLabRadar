@@ -12,11 +12,11 @@ const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
     icon: './assets/icons/icon',
-    appBundleId: 'com.tourniercy.gitlabbar',
+    appBundleId: 'com.tourniercy.gitlabradar',
     appCategoryType: 'public.app-category.developer-tools',
     darwinDarkModeSupport: true,
     // Ad-hoc sign so the code-signing identifier is derived from
-    // appBundleId (com.tourniercy.gitlabbar) instead of the generic
+    // appBundleId (com.tourniercy.gitlabradar) instead of the generic
     // com.github.Electron that packager's fallback signing leaves behind.
     // macOS needs a unique, consistent identity to register the app as a
     // notification source. identityValidation:false skips the keychain/cert

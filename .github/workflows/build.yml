@@ -38,14 +38,14 @@ jobs:
       - name: Upload DMG artifact
         uses: actions/upload-artifact@v4
         with:
-          name: GitLabBar-dmg
+          name: GitLabRadar-dmg
           path: out/make/*.dmg
           if-no-files-found: warn
 
       - name: Upload ZIP artifact
         uses: actions/upload-artifact@v4
         with:
-          name: GitLabBar-zip
+          name: GitLabRadar-zip
           path: out/make/zip/**/*.zip
           if-no-files-found: warn
 
@@ -61,13 +61,13 @@ jobs:
       - name: Download DMG artifact
         uses: actions/download-artifact@v4
         with:
-          name: GitLabBar-dmg
+          name: GitLabRadar-dmg
           path: ./artifacts
 
       - name: Download ZIP artifact
         uses: actions/download-artifact@v4
         with:
-          name: GitLabBar-zip
+          name: GitLabRadar-zip
           path: ./artifacts
 
       - name: List artifacts
@@ -105,7 +105,7 @@ jobs:
         if: steps.guard.outputs.skip != 'true'
         uses: actions/download-artifact@v4
         with:
-          name: GitLabBar-zip
+          name: GitLabRadar-zip
           path: ./artifacts
 
       - name: Compute version and sha256
@@ -128,14 +128,14 @@ jobs:
         if: steps.guard.outputs.skip != 'true'
         uses: actions/checkout@v4
         with:
-          repository: Tourniercy/homebrew-gitlabbar
+          repository: Tourniercy/homebrew-gitlabradar
           ssh-key: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
           path: tap
 
       - name: Update cask
         if: steps.guard.outputs.skip != 'true'
         run: |
-          CASK=tap/Casks/gitlabbar.rb
+          CASK=tap/Casks/gitlabradar.rb
           sed -i -E "s|^  version \".*\"|  version \"${{ steps.meta.outputs.version }}\"|" "$CASK"
           sed -i -E "s|^  sha256 \".*\"|  sha256 \"${{ steps.meta.outputs.sha256 }}\"|" "$CASK"
           echo "=== updated cask ==="
@@ -151,6 +151,6 @@ jobs:
             echo "Cask already up to date; nothing to commit."
             exit 0
           fi
-          git add Casks/gitlabbar.rb
-          git commit -m "chore: bump gitlabbar to ${{ steps.meta.outputs.version }}"
+          git add Casks/gitlabradar.rb
+          git commit -m "chore: bump gitlabradar to ${{ steps.meta.outputs.version }}"
           git push

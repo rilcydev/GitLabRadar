@@ -1,4 +1,8 @@
 import { app, BrowserWindow } from 'electron';
+// Must run before any electron-store is constructed below (tray/polling build
+// stores at import time). Migrates the legacy "GitLabBar" userData directory
+// to the renamed "GitLabRadar" one so existing settings survive the rename.
+import './main/store/runUserDataMigration';
 import { trayManager } from './main/tray';
 import { pollingService } from './main/services/polling';
 import { untagPollingService } from './main/services/untagPolling';

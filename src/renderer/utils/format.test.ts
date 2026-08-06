@@ -50,7 +50,7 @@ describe('simpleMarkdown', () => {
 
   it('converts links [text](url) with an inline openExternal handler', () => {
     expect(simpleMarkdown('[GitLab](https://gitlab.com)')).toBe(
-      '<a href="https://gitlab.com" style="color:var(--accent-purple);text-decoration:none;" onclick="event.stopPropagation();window.gitlabbar.app.openExternal(\'https://gitlab.com\');return false;">GitLab</a>'
+      '<a href="https://gitlab.com" style="color:var(--accent-purple);text-decoration:none;" onclick="event.stopPropagation();window.gitlabradar.app.openExternal(\'https://gitlab.com\');return false;">GitLab</a>'
     );
   });
 
@@ -59,7 +59,7 @@ describe('simpleMarkdown', () => {
     // test breaks, the escaping fix altered normal-case rendering, which
     // it must not.
     expect(simpleMarkdown('[foo](https://gitlab.laddit.io/foo)')).toBe(
-      '<a href="https://gitlab.laddit.io/foo" style="color:var(--accent-purple);text-decoration:none;" onclick="event.stopPropagation();window.gitlabbar.app.openExternal(\'https://gitlab.laddit.io/foo\');return false;">foo</a>'
+      '<a href="https://gitlab.laddit.io/foo" style="color:var(--accent-purple);text-decoration:none;" onclick="event.stopPropagation();window.gitlabradar.app.openExternal(\'https://gitlab.laddit.io/foo\');return false;">foo</a>'
     );
   });
 
@@ -69,14 +69,14 @@ describe('simpleMarkdown', () => {
     // a single-quoted JS string inside onclick="...openExternal('$2')...".
     // A URL containing an unescaped ' terminates that string early and lets
     // the rest of the URL run as JS in the menubar's renderer context, with
-    // access to window.gitlabbar (32 IPC commands: account add/remove/
+    // access to window.gitlabradar (32 IPC commands: account add/remove/
     // update, MR assign/dismiss, config writes).
     const payload = "https://evil.example/a';window.__pwned=1;//";
     const html = simpleMarkdown(`[click me](${payload})`);
 
     expect(html).toBe(
       '<a href="https://evil.example/a\';window.__pwned=1;//" style="color:var(--accent-purple);text-decoration:none;" ' +
-        'onclick="event.stopPropagation();window.gitlabbar.app.openExternal(\'https://evil.example/a\\\';window.__pwned=1;//\');return false;">click me</a>'
+        'onclick="event.stopPropagation();window.gitlabradar.app.openExternal(\'https://evil.example/a\\\';window.__pwned=1;//\');return false;">click me</a>'
     );
     // The decoded onclick handler must contain the payload only inside an
     // unbroken, backslash-escaped JS string literal — never as a bare
@@ -97,7 +97,7 @@ describe('simpleMarkdown', () => {
 
     expect(html).toBe(
       '<a href="x&quot; onclick=&quot;window.__pwned=1" style="color:var(--accent-purple);text-decoration:none;" ' +
-        'onclick="event.stopPropagation();window.gitlabbar.app.openExternal(\'x&quot; onclick=&quot;window.__pwned=1\');return false;">click me</a>'
+        'onclick="event.stopPropagation();window.gitlabradar.app.openExternal(\'x&quot; onclick=&quot;window.__pwned=1\');return false;">click me</a>'
     );
     // Exactly one href and one onclick attribute must survive — proof no
     // second (attacker-controlled) attribute was injected into the tag.
@@ -112,7 +112,7 @@ describe('simpleMarkdown', () => {
     // context-menu "Open Link" all bypass it and can navigate the raw
     // href directly — there is no will-navigate handler in tray.ts to
     // catch what gets through. A javascript: href reached that way runs
-    // arbitrary JS in the renderer with window.gitlabbar in scope. Reject
+    // arbitrary JS in the renderer with window.gitlabradar in scope. Reject
     // by omitting the <a> entirely (not just neutering href) so there is
     // no element for any route to act on.
     expect(simpleMarkdown('[click me](javascript:window.__pwned=1)')).toBe('click me');
@@ -135,19 +135,19 @@ describe('simpleMarkdown', () => {
 
   it('still renders an http: URL exactly as before the scheme allow-list', () => {
     expect(simpleMarkdown('[Docs](http://example.com/docs)')).toBe(
-      '<a href="http://example.com/docs" style="color:var(--accent-purple);text-decoration:none;" onclick="event.stopPropagation();window.gitlabbar.app.openExternal(\'http://example.com/docs\');return false;">Docs</a>'
+      '<a href="http://example.com/docs" style="color:var(--accent-purple);text-decoration:none;" onclick="event.stopPropagation();window.gitlabradar.app.openExternal(\'http://example.com/docs\');return false;">Docs</a>'
     );
   });
 
   it('still renders an https: URL exactly as before the scheme allow-list', () => {
     expect(simpleMarkdown('[Docs](https://example.com/docs)')).toBe(
-      '<a href="https://example.com/docs" style="color:var(--accent-purple);text-decoration:none;" onclick="event.stopPropagation();window.gitlabbar.app.openExternal(\'https://example.com/docs\');return false;">Docs</a>'
+      '<a href="https://example.com/docs" style="color:var(--accent-purple);text-decoration:none;" onclick="event.stopPropagation();window.gitlabradar.app.openExternal(\'https://example.com/docs\');return false;">Docs</a>'
     );
   });
 
   it('still renders a mailto: URL exactly as before the scheme allow-list', () => {
     expect(simpleMarkdown('[Contact](mailto:person@example.com)')).toBe(
-      '<a href="mailto:person@example.com" style="color:var(--accent-purple);text-decoration:none;" onclick="event.stopPropagation();window.gitlabbar.app.openExternal(\'mailto:person@example.com\');return false;">Contact</a>'
+      '<a href="mailto:person@example.com" style="color:var(--accent-purple);text-decoration:none;" onclick="event.stopPropagation();window.gitlabradar.app.openExternal(\'mailto:person@example.com\');return false;">Contact</a>'
     );
   });
 
@@ -156,7 +156,7 @@ describe('simpleMarkdown', () => {
     // link into a dead one. [x](/foo) has no scheme at all — it is left
     // untouched by the check, exactly as it rendered before this fix.
     expect(simpleMarkdown('[Home](/foo)')).toBe(
-      '<a href="/foo" style="color:var(--accent-purple);text-decoration:none;" onclick="event.stopPropagation();window.gitlabbar.app.openExternal(\'/foo\');return false;">Home</a>'
+      '<a href="/foo" style="color:var(--accent-purple);text-decoration:none;" onclick="event.stopPropagation();window.gitlabradar.app.openExternal(\'/foo\');return false;">Home</a>'
     );
   });
 
@@ -166,7 +166,7 @@ describe('simpleMarkdown', () => {
     // javascript:/data:/etc, so it is out of scope for this check and is
     // left untouched, exactly as it rendered before this fix.
     expect(simpleMarkdown('[CDN](//evil.example/lib.js)')).toBe(
-      '<a href="//evil.example/lib.js" style="color:var(--accent-purple);text-decoration:none;" onclick="event.stopPropagation();window.gitlabbar.app.openExternal(\'//evil.example/lib.js\');return false;">CDN</a>'
+      '<a href="//evil.example/lib.js" style="color:var(--accent-purple);text-decoration:none;" onclick="event.stopPropagation();window.gitlabradar.app.openExternal(\'//evil.example/lib.js\');return false;">CDN</a>'
     );
   });
 

@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import type { GitLabBarApi } from '@/shared/api/contract';
+import type { GitLabRadarApi } from '@/shared/api/contract';
 // Relative import: eslint's import/no-unresolved has no TS-aware resolver
 // for the `@/*` alias on value imports (see src/test/renderWithApi.tsx and
 // src/renderer/api/FakeApi.ts for the same pre-existing gap).
@@ -45,9 +45,9 @@ export interface CreateDismissalContextOptions {
   /** Name of the `use*Dismissal` hook this produces, used only in its own "must be used within a DataProvider" error message. */
   hookName: string;
   /** Mirrors `await gitlab.dismiss*(id); dismissed*Ids.push(id);`. */
-  dismiss: (api: GitLabBarApi, id: number) => Promise<void>;
+  dismiss: (api: GitLabRadarApi, id: number) => Promise<void>;
   /** Mirrors `await gitlab.restore*(); dismissed*Ids = [];`. */
-  restore: (api: GitLabBarApi) => Promise<void>;
+  restore: (api: GitLabRadarApi) => Promise<void>;
 }
 
 export interface DismissalContext {

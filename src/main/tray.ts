@@ -119,7 +119,7 @@ class TrayManager {
     console.log('=== Initializing TrayManager ===');
     const icon = this.createTrayIcon('gray');
     this.tray = new Tray(icon);
-    this.tray.setToolTip('GitLabBar');
+    this.tray.setToolTip('GitLabRadar');
 
     this.tray.on('click', (event, bounds) => {
       this.toggleMenuWindow(bounds);
@@ -131,7 +131,7 @@ class TrayManager {
 
     if (Notification.isSupported()) {
       new Notification({
-        title: 'GitLabBar',
+        title: 'GitLabRadar',
         body: 'Application started',
       }).show();
     }
@@ -243,7 +243,7 @@ class TrayManager {
       },
       { type: 'separator' },
       {
-        label: 'Quit GitLabBar',
+        label: 'Quit GitLabRadar',
         click: () => app.quit(),
       },
     ]);
@@ -263,7 +263,7 @@ class TrayManager {
       minWidth: 600,
       minHeight: 400,
       show: false,
-      title: 'GitLabBar - Preferences',
+      title: 'GitLabRadar - Preferences',
       titleBarStyle: 'hiddenInset',
       vibrancy: 'window',
       webPreferences: {
@@ -305,7 +305,7 @@ class TrayManager {
   updateBadge(count: number): void {
     if (!this.tray || this.badgeCount === count) return;
     this.badgeCount = count;
-    const tooltip = count > 0 ? `GitLabBar - ${count} pending MR(s)` : 'GitLabBar';
+    const tooltip = count > 0 ? `GitLabRadar - ${count} pending MR(s)` : 'GitLabRadar';
     this.tray.setToolTip(tooltip);
   }
 
